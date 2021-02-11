@@ -18,7 +18,6 @@ class FrameFactory
 {
 private:
 	boost::object_pool<Frame> frame_allocator;
-	boost::object_pool<Buffer> buffer_opool;
 	boost::pool<> buff_allocator;
 #ifdef APRA_CUDA_ENABLED
 	boost::pool<apra_cudamallochost_allocator> buff_pinned_allocator;
@@ -35,10 +34,8 @@ public:
 	FrameFactory(size_t _maxConcurrentFrames=0);
 	virtual ~FrameFactory();
 	frame_sp create(size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
-	buffer_sp createBuffer(size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
-	frame_sp create(buffer_sp buffer, size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
+	frame_sp create(frame_sp &frame, size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
 	void destroy(Frame* pointer, FrameMetadata::MemType memType);
-	void destroyBuffer(Buffer* pointer, FrameMetadata::MemType memType);
 	frame_sp getEOSFrame() {
 		return eosFrame;
 	}

@@ -7,21 +7,6 @@ using namespace std;
 class FrameFactory;
 class ApraData;
 
-class Buffer : public boost::asio::mutable_buffer
-{
-public:
-	Buffer(void *buff, size_t size, boost::shared_ptr<FrameFactory> mother);
-	virtual ~Buffer();
-
-	virtual void* data() const BOOST_ASIO_NOEXCEPT;
-	virtual std::size_t size() const BOOST_ASIO_NOEXCEPT;
-private:
-	void *myOrig;
-	friend class FrameFactory;
-	boost::shared_ptr<FrameFactory> myMother; //so that the mother does not get destroyed before children
-	void resetMemory(); // used during resize frame
-};
-
 class Frame :public boost::asio::mutable_buffer {
 public:
 	Frame(void *buff, size_t size, boost::shared_ptr<FrameFactory> mother);
@@ -43,12 +28,13 @@ public:
 	void setMetadata(framemetadata_sp& _metadata) { mMetadata = _metadata; }
 	framemetadata_sp getMetadata() { return mMetadata; }
 	virtual void* data() const BOOST_ASIO_NOEXCEPT;
-	virtual std::size_t size() const BOOST_ASIO_NOEXCEPT;
+	virtual std::size_t size() const BOOST_ASIO_NOEXCEPT;	
 protected:
 	Frame();
 	framemetadata_sp mMetadata;
 private:
 	void setDefaultValues();
+	void resetMemory();
 	void *myOrig;
 	friend class FrameFactory;
 	boost::shared_ptr<FrameFactory> myMother; //so that the mother does not get destroyed before children	

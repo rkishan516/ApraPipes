@@ -217,8 +217,7 @@ protected:
 	frame_sp makeFrame(size_t size, framemetadata_sp& metadata);
 	frame_sp makeFrame(size_t size, string& pinId);
 	frame_sp makeFrame(size_t size); // use only if 1 output pin is there
-	frame_sp makeFrame(buffer_sp& buffer, size_t& newSize, framemetadata_sp& metadata);
-	buffer_sp makeBuffer(size_t size, FrameMetadata::MemType memType);
+	frame_sp makeFrame(frame_sp& frame, size_t& newSize, framemetadata_sp& metadata);
 	frame_sp getEOSFrame();
 	frame_sp getEmptyFrame();
 		

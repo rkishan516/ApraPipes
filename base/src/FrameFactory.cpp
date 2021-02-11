@@ -66,39 +66,6 @@ frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory>& moth
 			boost::bind(&FrameFactory::destroy, this, _1, memType));
 }
 
-buffer_sp FrameFactory::createBuffer(size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType)
-{
-	boost::mutex::scoped_lock lock(m_mutex);
-	if (maxConcurrentFrames && counter >= maxConcurrentFrames)
-	{
-		return buffer_sp();
-	}
-	size_t n = getNumberOfChunks(size);
-
-	counter.fetch_add(1, memory_order_seq_cst);
-	numberOfChunks.fetch_add(n, memory_order_seq_cst);
-
-#ifdef APRA_CUDA_ENABLED
-	if (memType == FrameMetadata::MemType::HOST_PINNED)
-	{
-		return buffer_sp(
-			buffer_opool.construct(buff_pinned_allocator.ordered_malloc(n), size, mother),
-			boost::bind(&FrameFactory::destroyBuffer, this, _1, memType));
-	}
-	else if (memType == FrameMetadata::MemType::CUDA_DEVICE)
-	{
-		return buffer_sp(
-			buffer_opool.construct(buff_cudadevice_allocator.ordered_malloc(n), size, mother),
-			boost::bind(&FrameFactory::destroyBuffer, this, _1, memType));
-	}
-	else
-#endif	
-		return buffer_sp(
-			buffer_opool.construct(buff_allocator.ordered_malloc(n), size, mother),
-			boost::bind(&FrameFactory::destroyBuffer, this, _1, memType));
-	
-}
-
 void FrameFactory::destroy(Frame* pointer, FrameMetadata::MemType memType)
 {				
 	boost::mutex::scoped_lock lock(m_mutex);
@@ -127,41 +94,13 @@ void FrameFactory::destroy(Frame* pointer, FrameMetadata::MemType memType)
 	frame_allocator.free(pointer);
 }
 
-void FrameFactory::destroyBuffer(Buffer* pointer, FrameMetadata::MemType memType)
-{		
-	boost::mutex::scoped_lock lock(m_mutex);
-	counter.fetch_sub(1, memory_order_seq_cst);
-
-	if (pointer->myOrig != NULL)
-	{
-		size_t n = getNumberOfChunks(pointer->size());
-		numberOfChunks.fetch_sub(n, memory_order_seq_cst);
-		#ifdef APRA_CUDA_ENABLED
-		if (memType == FrameMetadata::MemType::HOST_PINNED)
-		{
-			buff_pinned_allocator.ordered_free(pointer->myOrig, n);
-		}
-		else if (memType == FrameMetadata::MemType::CUDA_DEVICE)
-		{
-			buff_cudadevice_allocator.ordered_free(pointer->myOrig, n);
-		}
-		else
-#endif
-		buff_allocator.ordered_free(pointer->myOrig, n);
-	}
-
-	auto mother = pointer->myMother;
-	pointer->~Buffer();
-	buffer_opool.free(pointer);
-}
-
-frame_sp FrameFactory::create(buffer_sp buffer, size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType)
+frame_sp FrameFactory::create(frame_sp &frame, size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType)
 {
-	size_t oldChunks = getNumberOfChunks(buffer->size());
+	size_t oldChunks = getNumberOfChunks(frame->size());
 	size_t newChunks = getNumberOfChunks(size);
 	size_t chunksToFree = oldChunks - newChunks;
 
-	auto origPtr = buffer->myOrig;
+	auto origPtr = frame->myOrig;
 	if (origPtr == NULL)
 	{
 		throw AIPException(AIP_FATAL, string("oldFrame->myOrig in NULL. Not expected."));
@@ -192,9 +131,8 @@ frame_sp FrameFactory::create(buffer_sp buffer, size_t size, boost::shared_ptr<F
 #endif
 			buff_allocator.ordered_free(ptr, chunksToFree);
 	}
-		
-	buffer->resetMemory(); // so that when destroyBuffer is called it should not free the memory
 
+	frame->resetMemory(); // so that when destroyBuffer is called it should not free the memory
 	return frame_sp(
 		frame_allocator.construct(origPtr, size, mother),
 		boost::bind(&FrameFactory::destroy, this, _1, memType));				

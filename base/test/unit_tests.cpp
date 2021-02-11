@@ -307,25 +307,6 @@ BOOST_AUTO_TEST_CASE(boost_pool_ordered_malloc_free)
 	BOOST_TEST(noOfFree == 1);
 }
 
-BOOST_AUTO_TEST_CASE(frame_factory_resize_test)
-{
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory);
-	{
-		auto buffer = fact->createBuffer(5000, fact, FrameMetadata::MemType::HOST);
-		BOOST_TEST(buffer->size() == 5000);
-
-		auto frame = fact->create(buffer, 2000, fact, FrameMetadata::MemType::HOST);
-		BOOST_TEST(frame->size() == 2000);
-	}
-
-	{
-		auto buffer = fact->createBuffer(5000, fact, FrameMetadata::MemType::HOST);
-		BOOST_TEST(buffer->size() == 5000);
-
-		auto frame = fact->create(buffer, 5000, fact, FrameMetadata::MemType::HOST);
-		BOOST_TEST(frame->size() == 5000);
-	}
-}
 
 BOOST_AUTO_TEST_CASE(frame_que_test)
 {

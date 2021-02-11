@@ -740,16 +740,11 @@ frame_sp Module::makeFrame(size_t size, framemetadata_sp& metadata) {
 	return frame;
 }
 
-frame_sp Module::makeFrame(buffer_sp& buffer, size_t& size, framemetadata_sp& metadata)
+frame_sp Module::makeFrame(frame_sp& bufferframe, size_t& size, framemetadata_sp& metadata)
 {	
-	auto frame = mpFrameFactory->create(buffer, size, mpFrameFactory, metadata->getMemType());	
+	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory, metadata->getMemType());	
 	frame->setMetadata(metadata);
 	return frame;
-}
-
-buffer_sp Module::makeBuffer(size_t size, FrameMetadata::MemType memType)
-{
-	return mpFrameFactory->createBuffer(size, mpFrameFactory, memType);	
 }
 
 frame_sp Module::getEOSFrame()

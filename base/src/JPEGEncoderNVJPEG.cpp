@@ -331,12 +331,12 @@ bool JPEGEncoderNVJPEG::process(frame_container &frames)
 {
 	auto frame = frames.cbegin()->second;
 
-	auto buffer = makeBuffer(mMaxStreamLength, mOutputMetadata->getMemType());
+	auto bufferFrame = makeFrame(mMaxStreamLength, mOutputMetadata);
 
 	size_t frameLength = mMaxStreamLength;
-	mDetail->compute(frame->data(), buffer->data(), frameLength);
+	mDetail->compute(frame->data(), bufferFrame->data(), frameLength);
 
-	auto outFrame = makeFrame(buffer, frameLength, mOutputMetadata);
+	auto outFrame = makeFrame(bufferFrame, frameLength, mOutputMetadata);
 
 	frames.insert(make_pair(mOutputPinId, outFrame));
 	send(frames);

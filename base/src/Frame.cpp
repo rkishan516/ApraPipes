@@ -4,29 +4,6 @@
 #include "ApraData.h"
 #include "FrameMetadata.h"
 
-Buffer::Buffer(void *buff, size_t size, boost::shared_ptr<FrameFactory> mother) : mutable_buffer(buff, size), myOrig(buff), myMother(mother)
-{
-
-}
-Buffer::~Buffer() {
-	myMother.reset();
-}
-
-void Buffer::resetMemory()
-{
-	myOrig = NULL;
-}
-
-void* Buffer::data() const BOOST_ASIO_NOEXCEPT
-{
-	return boost::asio::mutable_buffer::data();
-}
-
-std::size_t Buffer::size() const BOOST_ASIO_NOEXCEPT
-{
-	return boost::asio::mutable_buffer::size();
-}
-
 Frame::Frame():mutable_buffer(0, 0),myOrig(0)
 {
 	setDefaultValues();
@@ -78,6 +55,11 @@ bool Frame::isPausePlay()
 bool Frame::isCommand()
 {
 	return mMetadata->getFrameType() == FrameMetadata::FrameType::COMMAND;
+}
+
+void Frame::resetMemory()
+{
+	myOrig = NULL;
 }
 
 EoPFrame::EoPFrame() :Frame() {}

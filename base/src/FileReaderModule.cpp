@@ -63,10 +63,10 @@ bool FileReaderModule::produce()
 	}
 	
 	
-	auto buffer = makeBuffer(mProps.maxFileSize, metadata->getMemType());
+	auto bufferFrame = makeFrame(mProps.maxFileSize, metadata);
 	size_t buffer_size = mProps.maxFileSize;
 	uint64_t fIndex2 = 0;
-	if (!mDriver->ReadP(static_cast<uint8_t*>(buffer->data()), buffer_size, fIndex2))
+	if (!mDriver->ReadP(static_cast<uint8_t*>(bufferFrame->data()), buffer_size, fIndex2))
 	{
 		if (buffer_size > mProps.maxFileSize)
 		{
@@ -76,7 +76,7 @@ bool FileReaderModule::produce()
 		return false;
 	}
 	
-	auto frame = makeFrame(buffer, buffer_size, metadata);
+	auto frame = makeFrame(bufferFrame, buffer_size, metadata);
 	frame->fIndex2 = fIndex2;
 	
 	frame_container frames;
