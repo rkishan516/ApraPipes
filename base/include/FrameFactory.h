@@ -1,28 +1,20 @@
 #pragma once
 #include <boost/pool/object_pool.hpp>
-#include <boost/pool/pool.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/mutex.hpp>
 #include <atomic>
 
-#ifdef APRA_CUDA_ENABLED
-	#include "ApraPool.h"
-	#include "apra_cudamallochost_allocator.h"
-	#include "apra_cudamalloc_allocator.h"
-#endif
-
 #include "CommonDefs.h"
 #include "FrameMetadata.h"
+#include "Allocators.h"
+#include <memory>
 
 class FrameFactory
 {
 private:
 	boost::object_pool<Frame> frame_allocator;
-	boost::pool<> buff_allocator;
-#ifdef APRA_CUDA_ENABLED
-	boost::pool<apra_cudamallochost_allocator> buff_pinned_allocator;
-	ApraPool<apra_cudamalloc_allocator> buff_cudadevice_allocator;
-#endif
+	std::shared_ptr<HostAllocator> memory_allocator; 
+	
 	frame_sp eosFrame;
 	frame_sp emptyFrame;
 	boost::mutex m_mutex;
@@ -31,11 +23,11 @@ private:
 	std::atomic_size_t numberOfChunks;
 	size_t maxConcurrentFrames;
 public:
-	FrameFactory(size_t _maxConcurrentFrames=0);
+	FrameFactory(FrameMetadata::MemType memType, size_t _maxConcurrentFrames=0);
 	virtual ~FrameFactory();
-	frame_sp create(size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
-	frame_sp create(frame_sp &frame, size_t size, boost::shared_ptr<FrameFactory>& mother, FrameMetadata::MemType memType);
-	void destroy(Frame* pointer, FrameMetadata::MemType memType);
+	frame_sp create(size_t size, boost::shared_ptr<FrameFactory>& mother);
+	frame_sp create(frame_sp &frame, size_t size, boost::shared_ptr<FrameFactory>& mother);
+	void destroy(Frame* pointer);
 	frame_sp getEOSFrame() {
 		return eosFrame;
 	}

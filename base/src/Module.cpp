@@ -112,9 +112,6 @@ Module::Module(Kind nature, string name, ModuleProps _props) : mRunning(false), 
 	moduleCounter += 1;
 	myId = name + "_" + std::to_string(moduleCounter);
 
-	mpFrameFactory.reset(new FrameFactory(_props.maxConcurrentFrames));
-	mpCommandFactory.reset(new FrameFactory());
-
 	mQue.reset(new FrameContainerQueue(_props.qlen));
 
 	onStepFail = boost::bind(&Module::ignore, this, 0);
@@ -430,6 +427,12 @@ bool Module::init()
 		auto out = getFirstOutputMetadata();
 		out->copyHint(*in.get());
 	}
+	if (myNature != SINK)
+	{
+		auto out = getFirstOutputMetadata();
+		mpFrameFactory.reset(new FrameFactory(out->getMemType(), mProps->maxConcurrentFrames));
+	}
+	mpCommandFactory.reset(new FrameFactory(FrameMetadata::MemType::HOST));
 
 	mStopCount = 0;
 
@@ -734,7 +737,7 @@ frame_sp Module::makeFrame(size_t size, string &pinId)
 
 frame_sp Module::makeCommandFrame(size_t size, framemetadata_sp &metadata)
 {
-	auto frame = mpCommandFactory->create(size, mpCommandFactory, metadata->getMemType());
+	auto frame = mpCommandFactory->create(size, mpCommandFactory);
 	frame->setMetadata(metadata);
 
 	return frame;
@@ -742,7 +745,7 @@ frame_sp Module::makeCommandFrame(size_t size, framemetadata_sp &metadata)
 
 frame_sp Module::makeFrame(size_t size, framemetadata_sp &metadata)
 {
-	auto frame = mpFrameFactory->create(size, mpFrameFactory, metadata->getMemType());
+	auto frame = mpFrameFactory->create(size, mpFrameFactory);
 	if (frame.get())
 	{
 		frame->setMetadata(metadata);
@@ -752,7 +755,7 @@ frame_sp Module::makeFrame(size_t size, framemetadata_sp &metadata)
 
 frame_sp Module::makeFrame(frame_sp &bufferframe, size_t &size, framemetadata_sp &metadata)
 {
-	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory, metadata->getMemType());
+	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory);
 	frame->setMetadata(metadata);
 	return frame;
 }
