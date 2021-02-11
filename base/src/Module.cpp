@@ -18,7 +18,7 @@ class Module::Profiler
 	using sys_clock = std::chrono::system_clock;
 
 public:
-	Profiler(string& id, bool _shouldLog, int _printFrequency, std::function<string()> _getPoolHealthRecord): moduleId(id), shouldLog(_shouldLog), mPipelineFps(0), printFrequency(_printFrequency)
+	Profiler(string &id, bool _shouldLog, int _printFrequency, std::function<string()> _getPoolHealthRecord) : moduleId(id), shouldLog(_shouldLog), mPipelineFps(0), printFrequency(_printFrequency)
 	{
 		getPoolHealthRecord = _getPoolHealthRecord;
 	}
@@ -30,7 +30,6 @@ public:
 
 	virtual ~Profiler()
 	{
-
 	}
 
 	void startPipelineLap()
@@ -107,41 +106,41 @@ private:
 	double mPipelineFps;
 };
 
-Module::Module(Kind nature, string name, ModuleProps _props) :mRunning(false), mPlay(true), mForceStepCount(0), mStopCount(0), mForwardPins(0), myNature(nature), myName(name), mSkipIndex(0) {
+Module::Module(Kind nature, string name, ModuleProps _props) : mRunning(false), mPlay(true), mForceStepCount(0), mStopCount(0), mForwardPins(0), myNature(nature), myName(name), mSkipIndex(0)
+{
 	static int moduleCounter = 0;
 	moduleCounter += 1;
 	myId = name + "_" + std::to_string(moduleCounter);
-		
+
 	mpFrameFactory.reset(new FrameFactory(_props.maxConcurrentFrames));
 	mpCommandFactory.reset(new FrameFactory());
-	
+
 	mQue.reset(new FrameContainerQueue(_props.qlen));
-	
-	onStepFail=boost::bind(&Module::ignore,this,0);
-		
+
+	onStepFail = boost::bind(&Module::ignore, this, 0);
+
 	pacer = boost::shared_ptr<PaceMaker>(new PaceMaker(_props.fps));
 	auto tempId = getId();
-	mProfiler.reset(new Profiler(tempId, _props.logHealth, _props.logHealthFrequency, [&]() -> std::string {return mpFrameFactory->getPoolHealthRecord(); }));
-	if(_props.skipN > _props.skipD)
+	mProfiler.reset(new Profiler(tempId, _props.logHealth, _props.logHealthFrequency, [&]() -> std::string { return mpFrameFactory->getPoolHealthRecord(); }));
+	if (_props.skipN > _props.skipD)
 	{
 		throw AIPException(AIP_ROI_OUTOFRANGE, "skipN <= skipD");
 	}
 	mProps.reset(new ModuleProps(_props)); // saving for restoring later
 
 	mCommandMetadata.reset(new FrameMetadata(FrameMetadata::FrameType::COMMAND));
-	mPropsChangeMetadata.reset(new FrameMetadata(FrameMetadata::FrameType::PROPS_CHANGE));	
+	mPropsChangeMetadata.reset(new FrameMetadata(FrameMetadata::FrameType::PROPS_CHANGE));
 }
-Module::~Module() 
+Module::~Module()
 {
-
 }
 
 bool Module::term()
-{	
+{
 	mQue->clear();
 	// in case of cyclic dependency - one module holds the reference of the other and hence they never get freed
 	mModules.clear();
-	mProfiler->resetStats(); 
+	mProfiler->resetStats();
 
 	return true;
 }
@@ -156,16 +155,16 @@ uint64_t Module::getTickCounter()
 	return mProfiler->getTickCounter();
 }
 
-void Module::setProps(ModuleProps& props)
+void Module::setProps(ModuleProps &props)
 {
 	if (props.qlen != mProps->qlen)
 	{
 		throw AIPException(AIP_NOTIMPLEMENTED, string("qlen cannot be changed"));
 	}
-	
+
 	pacer->setFps(props.fps);
-	mProfiler->setShouldLog(props.logHealth);	
-	if(props.skipN > props.skipD)
+	mProfiler->setShouldLog(props.logHealth);
+	if (props.skipN > props.skipD)
 	{
 		// processing all
 		props.skipN = 0;
@@ -179,22 +178,22 @@ ModuleProps Module::getProps()
 	return *mProps.get();
 }
 
-void Module::fillProps(ModuleProps& props)
+void Module::fillProps(ModuleProps &props)
 {
 	props.fps = mProps->fps;
 	props.qlen = mProps->qlen;
 	props.logHealth = mProps->logHealth;
 }
 
-string Module::addOutputPin(framemetadata_sp& metadata)
+string Module::addOutputPin(framemetadata_sp &metadata)
 {
 	std::string pinId = myId + "_pin_" + std::to_string(mOutputPinIdMetadataMap.size() + 1);
-	addOutputPin(metadata, pinId);	
+	addOutputPin(metadata, pinId);
 
 	return pinId;
 }
 
-void Module::addOutputPin(framemetadata_sp& metadata, string& pinId)
+void Module::addOutputPin(framemetadata_sp &metadata, string &pinId)
 {
 	if (mOutputPinIdMetadataMap.find(pinId) != mOutputPinIdMetadataMap.end())
 	{
@@ -202,9 +201,9 @@ void Module::addOutputPin(framemetadata_sp& metadata, string& pinId)
 		auto msg = "<" + getId() + "> pinId<" + pinId + "> Already Exist. Please give unique name.";
 		throw AIPException(AIP_UNIQUE_CONSTRAINT_FAILED, msg);
 	}
-	   
-	mOutputPinIdMetadataMap[pinId] = metadata;	
-	
+
+	mOutputPinIdMetadataMap[pinId] = metadata;
+
 	if (!validateOutputPins())
 	{
 		mOutputPinIdMetadataMap.erase(pinId);
@@ -213,7 +212,7 @@ void Module::addOutputPin(framemetadata_sp& metadata, string& pinId)
 	}
 }
 
-bool Module::setNext(boost::shared_ptr<Module> next, vector<string>& pinIdArr, bool open, bool isFeedback)
+bool Module::setNext(boost::shared_ptr<Module> next, vector<string> &pinIdArr, bool open, bool isFeedback)
 {
 	if (next->getNature() < this->getNature())
 	{
@@ -226,7 +225,7 @@ bool Module::setNext(boost::shared_ptr<Module> next, vector<string>& pinIdArr, b
 		LOG_ERROR << "No Pins to connect. " << this->getId() << " -> " << next->getId();
 		return false;
 	}
-		
+
 	auto nextModuleId = next->getId();
 	if (mModules.find(nextModuleId) != mModules.end())
 	{
@@ -235,10 +234,11 @@ bool Module::setNext(boost::shared_ptr<Module> next, vector<string>& pinIdArr, b
 	}
 	mModules[nextModuleId] = next;
 	mConnections.insert(make_pair(nextModuleId, boost::container::deque<string>()));
-	
-	for (auto& pinId : pinIdArr) 
+
+	for (auto &pinId : pinIdArr)
 	{
-		if (mOutputPinIdMetadataMap.find(pinId) == mOutputPinIdMetadataMap.end()) {
+		if (mOutputPinIdMetadataMap.find(pinId) == mOutputPinIdMetadataMap.end())
+		{
 			auto msg = "pinId<" + pinId + "> doesn't exist in <" + this->getId() + ">";
 			mModules.erase(nextModuleId);
 			mConnections.erase(nextModuleId);
@@ -252,7 +252,7 @@ bool Module::setNext(boost::shared_ptr<Module> next, vector<string>& pinIdArr, b
 		{
 			next->addInputPin(metadata, pinId, isFeedback); // addInputPin throws exception from validateInputPins
 		}
-		catch (AIP_Exception& exception)
+		catch (AIP_Exception &exception)
 		{
 			mModules.erase(nextModuleId);
 			mConnections.erase(nextModuleId);
@@ -318,7 +318,7 @@ void Module::addInputPin(framemetadata_sp &metadata, string &pinId, bool isFeedb
 	}
 }
 
-void Module::addInputPin(framemetadata_sp& metadata, string& pinId)
+void Module::addInputPin(framemetadata_sp &metadata, string &pinId)
 {
 	if (mInputPinIdMetadataMap.find(pinId) != mInputPinIdMetadataMap.end())
 	{
@@ -328,7 +328,8 @@ void Module::addInputPin(framemetadata_sp& metadata, string& pinId)
 
 	mInputPinIdMetadataMap[pinId] = metadata;
 
-	if (!validateInputPins()) {
+	if (!validateInputPins())
+	{
 		mInputPinIdMetadataMap.erase(pinId);
 		auto msg = "Input Pins Validation Failed. <" + getId() + ">";
 		throw AIPException(AIP_PINS_VALIDATION_FAILED, msg);
@@ -338,14 +339,14 @@ void Module::addInputPin(framemetadata_sp& metadata, string& pinId)
 	mInputPinsDirection[pinId] = true; // forward
 }
 
-bool Module::isFeedbackEnabled(std::string& moduleId)
+bool Module::isFeedbackEnabled(std::string &moduleId)
 {
-	auto& pinIdArr = mConnections[moduleId];
+	auto &pinIdArr = mConnections[moduleId];
 	auto childModule = mModules[moduleId];
 	for (auto itr = pinIdArr.begin(); itr != pinIdArr.end(); itr++)
 	{
-		auto& pinId = *itr;
-		if(childModule->mInputPinsDirection[pinId])
+		auto &pinId = *itr;
+		if (childModule->mInputPinsDirection[pinId])
 		{
 			// forward pin found - so feedback not enabled
 			return false;
@@ -358,7 +359,7 @@ bool Module::isFeedbackEnabled(std::string& moduleId)
 bool Module::validateInputPins()
 {
 	if (myNature == SOURCE && getNumberOfInputPins() == 0)
-	{		
+	{
 		return true;
 	}
 
@@ -390,9 +391,9 @@ boost::container::deque<boost::shared_ptr<Module>> Module::getConnectedModules()
 	boost::container::deque<boost::shared_ptr<Module>> nextModules;
 
 	for (map<string, boost::shared_ptr<Module>>::const_iterator it = mModules.cbegin(); it != mModules.cend(); ++it)
-	{	
+	{
 		auto pModule = it->second;
-		nextModules.push_back(pModule);		
+		nextModules.push_back(pModule);
 	}
 
 	return nextModules;
@@ -437,14 +438,14 @@ bool Module::init()
 	return ret;
 }
 
-bool Module::push(frame_container frameContainer) {
+bool Module::push(frame_container frameContainer)
+{
 	mQue->push(frameContainer);
 	return true;
 }
 
-
 bool Module::try_push(frame_container frameContainer)
-{	
+{
 	auto rc = mQue->try_push(frameContainer);
 	return rc;
 }
@@ -459,7 +460,8 @@ frame_container Module::pop()
 	return mQue->pop();
 }
 
-bool Module::isFull() {
+bool Module::isFull()
+{
 	bool ret = false;
 	map<string, boost::shared_ptr<Module>> mModules;
 	for (auto it = mModules.cbegin(); it != mModules.end(); it++)
@@ -470,13 +472,14 @@ bool Module::isFull() {
 			break;
 		}
 	}
-	
+
 	return ret;
 }
 
-bool Module::send(frame_container& frames, bool forceBlockingPush) {
+bool Module::send(frame_container &frames, bool forceBlockingPush)
+{
 	// mFindex may be propagated for EOS, EOP, Command, PropsChange also - which is wrong
-	uint64_t fIndex = 0; 
+	uint64_t fIndex = 0;
 	uint64_t timestamp = 0;
 	if (frames.size() != 0)
 	{
@@ -498,7 +501,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 		}
 
 		if (myNature != SOURCE)
-		{		
+		{
 			// first input pin
 			auto pinId = getInputMetadata().begin()->first;
 			if (frames.find(pinId) != frames.end())
@@ -511,7 +514,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 				// try output pins - muxer comes here
 				for (auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++)
 				{
-					auto& pinId = me->first;
+					auto &pinId = me->first;
 					if (frames.find(pinId) != frames.end())
 					{
 						fIndex = frames[pinId]->fIndex;
@@ -519,20 +522,20 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 						break;
 					}
 				}
-			}							
+			}
 		}
 		else
 		{
 			// try for all output pins
-			for(auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++) 
+			for (auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++)
 			{
-				auto& pinId = me->first;
+				auto &pinId = me->first;
 				if (frames.find(pinId) != frames.end())
 				{
 					fIndex = frames[pinId]->fIndex;
 					timestamp = frames[pinId]->timestamp;
 					break;
-				}				
+				}
 			}
 		}
 	}
@@ -550,7 +553,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 	// loop over all the modules and send
 	for (Connections::const_iterator it = mConnections.begin(); it != mConnections.end(); it++)
 	{
-		auto& nextModuleId = it->first;
+		auto &nextModuleId = it->first;
 		if (!mRelay[nextModuleId] && !forceBlockingPush)
 		{
 			// This is dangerous - the callers may assume that all the frames go through - but since it is relay - they wont go through
@@ -561,7 +564,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 
 		auto pinsArr = it->second;
 		frame_container requiredPins;
-		
+
 		for (auto i = pinsArr.begin(); i != pinsArr.end(); i++)
 		{
 			auto pinId = *i;
@@ -579,7 +582,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 			continue;
 		}
 
-		// next module push		
+		// next module push
 		if (!forceBlockingPush)
 		{
 			mQuePushStrategy->push(nextModuleId, requiredPins);
@@ -593,7 +596,7 @@ bool Module::send(frame_container& frames, bool forceBlockingPush) {
 	return mQuePushStrategy->flush();
 }
 
-boost_deque<frame_sp> Module::getFrames(frame_container& frames)
+boost_deque<frame_sp> Module::getFrames(frame_container &frames)
 {
 	boost_deque<frame_sp> frames_arr;
 	for (frame_container::const_iterator it = frames.begin(); it != frames.end(); it++)
@@ -604,10 +607,11 @@ boost_deque<frame_sp> Module::getFrames(frame_container& frames)
 	return frames_arr;
 }
 
-string getPinIdByType(int type, metadata_by_pin& metadataMap)
+string getPinIdByType(int type, metadata_by_pin &metadataMap)
 {
-	pair<string, framemetadata_sp> me; // map element		
-	BOOST_FOREACH(me, metadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, metadataMap)
+	{
 		if (me.second->getFrameType() == type)
 		{
 			return me.first;
@@ -621,8 +625,9 @@ vector<string> Module::getAllOutputPinsByType(int type)
 {
 	vector<string> pins;
 
-	pair<string, framemetadata_sp> me; // map element		
-	BOOST_FOREACH(me, mOutputPinIdMetadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	{
 		if (me.second->getFrameType() == type)
 		{
 			pins.push_back(me.first);
@@ -642,10 +647,11 @@ string Module::getOutputPinIdByType(int type)
 	return getPinIdByType(type, mOutputPinIdMetadataMap);
 }
 
-framemetadata_sp getMetadataByType(int type, metadata_by_pin& metadataMap)
+framemetadata_sp getMetadataByType(int type, metadata_by_pin &metadataMap)
 {
-	pair<string, framemetadata_sp> me; // map element		
-	BOOST_FOREACH(me, metadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, metadataMap)
+	{
 		if (me.second->getFrameType() == type)
 		{
 			return me.second;
@@ -655,11 +661,12 @@ framemetadata_sp getMetadataByType(int type, metadata_by_pin& metadataMap)
 	return framemetadata_sp();
 }
 
-int getNumberOfPinsByType(int type, metadata_by_pin& metadataMap)
+int getNumberOfPinsByType(int type, metadata_by_pin &metadataMap)
 {
 	int count = 0;
-	pair<string, framemetadata_sp> me; // map element		
-	BOOST_FOREACH(me, metadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, metadataMap)
+	{
 		if (me.second->getFrameType() == type)
 		{
 			count += 1;
@@ -689,19 +696,19 @@ int Module::getNumberOfOutputsByType(int type)
 	return getNumberOfPinsByType(type, mOutputPinIdMetadataMap);
 }
 
-bool Module::isMetadataEmpty(framemetadata_sp& metatata)
+bool Module::isMetadataEmpty(framemetadata_sp &metatata)
 {
 	return !metatata.get();
 }
 
-bool Module::isFrameEmpty(frame_sp& frame)
+bool Module::isFrameEmpty(frame_sp &frame)
 {
 	return !frame.get();
 }
 
-frame_sp Module::getFrameByType(frame_container& frames, int frameType)
+frame_sp Module::getFrameByType(frame_container &frames, int frameType)
 {
-	// This returns only the first matched frametype 
+	// This returns only the first matched frametype
 	// remmeber the map is ordered by pin ids
 	for (auto it = frames.cbegin(); it != frames.cend(); it++)
 	{
@@ -720,18 +727,21 @@ frame_sp Module::makeFrame(size_t size)
 	return makeFrame(size, mOutputPinIdMetadataMap.begin()->second);
 }
 
-frame_sp Module::makeFrame(size_t size, string& pinId) {	
+frame_sp Module::makeFrame(size_t size, string &pinId)
+{
 	return makeFrame(size, mOutputPinIdMetadataMap[pinId]);
 }
 
-frame_sp Module::makeCommandFrame(size_t size, framemetadata_sp& metadata) {
+frame_sp Module::makeCommandFrame(size_t size, framemetadata_sp &metadata)
+{
 	auto frame = mpCommandFactory->create(size, mpCommandFactory, metadata->getMemType());
 	frame->setMetadata(metadata);
-	
+
 	return frame;
 }
 
-frame_sp Module::makeFrame(size_t size, framemetadata_sp& metadata) {
+frame_sp Module::makeFrame(size_t size, framemetadata_sp &metadata)
+{
 	auto frame = mpFrameFactory->create(size, mpFrameFactory, metadata->getMemType());
 	if (frame.get())
 	{
@@ -740,9 +750,9 @@ frame_sp Module::makeFrame(size_t size, framemetadata_sp& metadata) {
 	return frame;
 }
 
-frame_sp Module::makeFrame(frame_sp& bufferframe, size_t& size, framemetadata_sp& metadata)
-{	
-	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory, metadata->getMemType());	
+frame_sp Module::makeFrame(frame_sp &bufferframe, size_t &size, framemetadata_sp &metadata)
+{
+	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory, metadata->getMemType());
 	frame->setMetadata(metadata);
 	return frame;
 }
@@ -757,12 +767,13 @@ frame_sp Module::getEmptyFrame()
 	return mpFrameFactory->getEmptyFrame();
 }
 
-void Module::operator()() { 
-	run(); 
+void Module::operator()()
+{
+	run();
 }
 bool Module::run()
 {
-	LOG_INFO << "Starting " << myId << " on " << myThread.get_id() ;
+	LOG_INFO << "Starting " << myId << " on " << myThread.get_id();
 	mRunning = true;
 	handlePausePlay(mPlay);
 	while (mRunning)
@@ -773,18 +784,20 @@ bool Module::run()
 			break;
 		}
 	}
-	LOG_INFO << "Ending " << myId << " on " << myThread.get_id() ;
+	LOG_INFO << "Ending " << myId << " on " << myThread.get_id();
 	term(); //my job is done
 	return true;
 }
 
-bool isMetadatset(metadata_by_pin& metadataMap)
+bool isMetadatset(metadata_by_pin &metadataMap)
 {
 	bool bSet = true;
 
-	pair<string, framemetadata_sp> me; // map element		
-	BOOST_FOREACH(me, metadataMap) {
-		if (!me.second->isSet()) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, metadataMap)
+	{
+		if (!me.second->isSet())
+		{
 			bSet = false;
 			break;
 		}
@@ -794,11 +807,11 @@ bool isMetadatset(metadata_by_pin& metadataMap)
 }
 
 bool Module::shouldTriggerSOS()
-{			
+{
 	if (!isMetadatset(mInputPinIdMetadataMap) || !isMetadatset(mOutputPinIdMetadataMap))
 	{
 		return true;
-	}	
+	}
 
 	return false;
 }
@@ -815,9 +828,9 @@ bool Module::play(bool play)
 	auto metadata = framemetadata_sp(new PausePlayMetadata());
 	auto frame = makeFrame(metadata->getDataSize(), metadata);
 
-	auto buffer = (unsigned char*)frame->data();
+	auto buffer = (unsigned char *)frame->data();
 	memset(frame->data(), play, 1);
-	
+
 	// add to que
 	frame_container frames;
 	frames.insert(make_pair("pause_play", frame));
@@ -851,8 +864,8 @@ bool Module::relay(boost::shared_ptr<Module> next, bool open)
 bool Module::processSourceQue()
 {
 	frame_container frames;
-	while ((frames = mQue->try_pop()).size())	
-	{		
+	while ((frames = mQue->try_pop()).size())
+	{
 		auto it = frames.cbegin();
 		while (it != frames.cend())
 		{
@@ -862,7 +875,7 @@ bool Module::processSourceQue()
 
 			if (frame->isPausePlay())
 			{
-				auto buffer = (unsigned char*)frame->data();
+				auto buffer = (unsigned char *)frame->data();
 				auto play = buffer[0] ? true : false;
 				handlePausePlay(play);
 			}
@@ -899,18 +912,18 @@ bool Module::handlePausePlay(bool play)
 }
 
 bool Module::step()
-{		
-	bool ret = false;	
+{
+	bool ret = false;
 	if (myNature == SOURCE)
 	{
-		if(!processSourceQue())
+		if (!processSourceQue())
 		{
 			return true;
 		}
 		bool forceStep = shouldForceStep();
 
 		pacer->start();
-		
+
 		if (mPlay || forceStep)
 		{
 			mProfiler->startPipelineLap();
@@ -922,15 +935,15 @@ bool Module::step()
 			ret = true;
 			// ret false will kill the thread
 		}
-		
+
 		pacer->end();
 	}
 	else
 	{
 		mProfiler->startPipelineLap();
-		auto frames = mQue->pop();	
+		auto frames = mQue->pop();
 		preProcessNonSource(frames);
-		
+
 		if (frames.size() == 0 || shouldSkip())
 		{
 			// it can come here only if frames.erase from processEOS or processSOS or processEoP or isPropsChange() or isCommand()
@@ -938,15 +951,15 @@ bool Module::step()
 		}
 
 		mProfiler->startProcessingLap();
-		ret = stepNonSource(frames);		
+		ret = stepNonSource(frames);
 		mProfiler->endLap(mQue->size());
 	}
-		
+
 	return ret;
 }
 
 void Module::sendEOS()
-{	
+{
 	if (myNature == SINK)
 	{
 		return;
@@ -954,15 +967,16 @@ void Module::sendEOS()
 
 	frame_container frames;
 	auto frame = frame_sp(new EoSFrame());
-	pair<string, framemetadata_sp> me; // map element	
-	BOOST_FOREACH(me, mOutputPinIdMetadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	{
 		frames.insert(make_pair(me.first, frame));
 	}
 
 	send(frames, true);
 }
 
-bool Module::preProcessNonSource(frame_container& frames)
+bool Module::preProcessNonSource(frame_container &frames)
 {
 	auto bTriggerSOS = shouldTriggerSOS(); // donot calculate every time - store the state when condition changes
 
@@ -1016,7 +1030,7 @@ bool Module::preProcessNonSource(frame_container& frames)
 
 		if (!bTriggerSOS)
 		{
-			// framemetadata is set. No action required			
+			// framemetadata is set. No action required
 			continue;
 		}
 
@@ -1024,7 +1038,7 @@ bool Module::preProcessNonSource(frame_container& frames)
 		mInputPinIdMetadataMap[pinId] = frame->getMetadata();
 		if (!processSOS(frame))
 		{
-			// remove frame from frames because it is still not ready to process frames		
+			// remove frame from frames because it is still not ready to process frames
 			frames.erase(pinId);
 		}
 		// bug: outputmetadata can also be updated ? give a set function
@@ -1033,14 +1047,14 @@ bool Module::preProcessNonSource(frame_container& frames)
 	return true;
 }
 
-bool Module::stepNonSource(frame_container& frames)
-{	
+bool Module::stepNonSource(frame_container &frames)
+{
 	bool ret = true;
 	try
 	{
 		ret = process(frames);
 	}
-	catch (AIP_Exception&)
+	catch (AIP_Exception &)
 	{
 		// assuming already logged
 	}
@@ -1052,10 +1066,11 @@ bool Module::stepNonSource(frame_container& frames)
 	return ret;
 }
 
-bool Module::addEoPFrame(frame_container& frames)
+bool Module::addEoPFrame(frame_container &frames)
 {
-	pair<string, framemetadata_sp> me; // map element	
-	BOOST_FOREACH(me, mOutputPinIdMetadataMap) {
+	pair<string, framemetadata_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	{
 		auto frame = frame_sp(new EoPFrame());
 		frame->setMetadata(me.second);
 		frames.insert(make_pair(me.first, frame));
@@ -1111,19 +1126,20 @@ void Module::adaptQueue(boost::shared_ptr<FrameContainerQueueAdapter> queAdapter
 	mQue = queAdapter;
 }
 
-void Module::ignore(int times) {
+void Module::ignore(int times)
+{
 	static int observed = 0;
 	observed++;
-	if (observed >= times && times>0)
+	if (observed >= times && times > 0)
 	{
 		LOG_TRACE << "stopping due to step failure ";
 		observed = 0;
 		handleStop();
 	}
-	
-} 
+}
 
-void Module::stop_onStepfail() {
+void Module::stop_onStepfail()
+{
 	LOG_ERROR << "Stopping " << myId << " due to step failure ";
 	handleStop();
 }
@@ -1133,7 +1149,7 @@ void Module::emit_event(unsigned short eventID)
 	if (!event_consumer.empty())
 	{
 		event_consumer(this, eventID);
-		event_consumer.clear(); // we can only fire once. 
+		event_consumer.clear(); // we can only fire once.
 	}
 }
 
@@ -1144,28 +1160,29 @@ void Module::emit_fatal(unsigned short eventID)
 		//we have a handler... let's trigger it
 		fatal_event_consumer(this, eventID);
 	}
-	else {
+	else
+	{
 		//we dont have a handler let's kill this thread
 		std::string msg("Fatal error in module ");
 		LOG_FATAL << "FATAL error in module : " << myName;
 		msg += myName;
-		msg += " Event ID "; 
+		msg += " Event ID ";
 		msg += std::to_string(eventID);
 		throw AIPException(AIP_FATAL, msg);
 	}
 }
 
-void Module::register_consumer(boost::function<void(Module*, unsigned short)> consumer, bool bFatal /*= false*/)
+void Module::register_consumer(boost::function<void(Module *, unsigned short)> consumer, bool bFatal /*= false*/)
 {
 	(bFatal) ? (fatal_event_consumer = consumer) : (event_consumer = consumer);
 }
 
-bool Module::handlePropsChange(frame_sp& frame)
+bool Module::handlePropsChange(frame_sp &frame)
 {
 	throw AIPException(AIP_NOTIMPLEMENTED, "Props Change for not implemented");
 }
 
-bool Module::handleCommand(Command::CommandType type, frame_sp& frame)
+bool Module::handleCommand(Command::CommandType type, frame_sp &frame)
 {
 	switch (type)
 	{
@@ -1176,17 +1193,17 @@ bool Module::handleCommand(Command::CommandType type, frame_sp& frame)
 
 		mRelay[cmd.nextModuleId] = cmd.open;
 	}
-		break;
+	break;
 	case Command::Step:
 	{
 		// call step
 		mForceStepCount++;
 	}
-		break;
+	break;
 	default:
 		throw AIPException(AIP_NOTIMPLEMENTED, "Command Handler for <" + to_string(type) + "> not implemented");
 	}
-	
+
 	return true;
 }
 
@@ -1202,12 +1219,12 @@ bool Module::shouldForceStep()
 }
 
 bool Module::shouldSkip()
-{	
+{
 	if (mProps->skipN == 0)
 	{
 		return false;
 	}
-	
+
 	if (mProps->skipN == mProps->skipD)
 	{
 		return true;
