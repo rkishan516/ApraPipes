@@ -3,6 +3,8 @@
 #include <Argus/Argus.h>
 #include "nvbuf_utils.h"
 
+
+//TODO: deprecated class please don't use this
 class DMABuffer
 {
 public:

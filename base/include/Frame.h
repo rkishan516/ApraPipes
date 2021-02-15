@@ -10,7 +10,6 @@ class ApraData;
 class Frame :public boost::asio::mutable_buffer {
 public:
 	Frame(void *buff, size_t size, boost::shared_ptr<FrameFactory> mother);
-	Frame(void *buff, size_t size, framemetadata_sp& metadata);
 	virtual ~Frame();
 	short mFrameType;
 	uint64_t mFStart, mFEnd;
@@ -24,8 +23,7 @@ public:
 	virtual bool isEmpty() { return false; }	
 	virtual bool isPropsChange();
 	virtual bool isPausePlay();
-	virtual bool isCommand();
-	void setMetadata(framemetadata_sp& _metadata) { mMetadata = _metadata; }
+	virtual bool isCommand();	
 	framemetadata_sp getMetadata() { return mMetadata; }
 	virtual void* data() const BOOST_ASIO_NOEXCEPT;
 	virtual std::size_t size() const BOOST_ASIO_NOEXCEPT;	
@@ -35,6 +33,7 @@ protected:
 private:
 	void setDefaultValues();
 	void resetMemory();
+	void setMetadata(framemetadata_sp& _metadata) { mMetadata = _metadata; }
 	void *myOrig;
 	friend class FrameFactory;
 	boost::shared_ptr<FrameFactory> myMother; //so that the mother does not get destroyed before children	

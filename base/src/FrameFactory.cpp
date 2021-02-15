@@ -50,9 +50,10 @@ frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory> &moth
 	counter.fetch_add(1, memory_order_seq_cst);
 	numberOfChunks.fetch_add(n, memory_order_seq_cst);
 
-	return frame_sp(
+	auto outFrame = frame_sp(
 		frame_allocator.construct(memory_allocator->allocateChunks(n), size, mother),
 		boost::bind(&FrameFactory::destroy, this, _1));
+	return outFrame;
 }
 
 void FrameFactory::destroy(Frame *pointer)
@@ -100,9 +101,11 @@ frame_sp FrameFactory::create(frame_sp &frame, size_t size, boost::shared_ptr<Fr
 	}
 
 	frame->resetMemory(); // so that when destroyBuffer is called it should not free the memory
-	return frame_sp(
+	auto outFrame = frame_sp(
 		frame_allocator.construct(origPtr, size, mother),
 		boost::bind(&FrameFactory::destroy, this, _1));
+		outFrame->setMetadata();
+	return outFrame;
 }
 
 std::string FrameFactory::getPoolHealthRecord()

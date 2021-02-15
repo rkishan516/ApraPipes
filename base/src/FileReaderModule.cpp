@@ -2,7 +2,7 @@
 #include "FileReaderModule.h"
 #include "FrameMetadata.h"
 #include "FileSequenceDriver.h"
-#include "Frame.h"
+#include "ExtFrame.h"
 #include "Command.h"
 
 FileReaderModule::FileReaderModule(FileReaderModuleProps _props)
@@ -55,7 +55,7 @@ bool FileReaderModule::produce()
 		// used for performance tests
 		frame_container frames;
 		auto& cachedFrame = mFrames.begin()->second; 
-		auto frame = frame_sp(new Frame(cachedFrame->data(), cachedFrame->size(), boost::shared_ptr<FrameFactory>()));
+		auto frame = frame_sp(new ExtFrame(cachedFrame->data(), cachedFrame->size()));
 		frame->setMetadata(metadata);
 		frames.insert(make_pair(getOutputMetadata().begin()->first, frame));
 		send(frames);
