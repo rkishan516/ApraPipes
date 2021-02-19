@@ -184,7 +184,7 @@ void Module::fillProps(ModuleProps &props)
 
 string Module::addOutputPin(framemetadata_sp &metadata)
 {
-	std::string pinId = myId + "_pin_" + std::to_string(mOutputPinIdMetadataMap.size() + 1);
+	std::string pinId = myId + "_pin_" + std::to_string(mOutputPinIdFrameFactoryMap.size() + 1);
 	addOutputPin(metadata, pinId);
 
 	return pinId;
@@ -192,18 +192,17 @@ string Module::addOutputPin(framemetadata_sp &metadata)
 
 void Module::addOutputPin(framemetadata_sp &metadata, string &pinId)
 {
-	if (mOutputPinIdMetadataMap.find(pinId) != mOutputPinIdMetadataMap.end())
+	if (mOutputPinIdFrameFactoryMap.find(pinId) != mOutputPinIdFrameFactoryMap.end())
 	{
 		// key alread exist exception
 		auto msg = "<" + getId() + "> pinId<" + pinId + "> Already Exist. Please give unique name.";
 		throw AIPException(AIP_UNIQUE_CONSTRAINT_FAILED, msg);
 	}
-
-	mOutputPinIdMetadataMap[pinId] = metadata;
+	mOutputPinIdFrameFactoryMap.insert(std::make_pair(pinId, framefactory_sp(new FrameFactory(metadata, mProps->maxConcurrentFrames))));
 
 	if (!validateOutputPins())
 	{
-		mOutputPinIdMetadataMap.erase(pinId);
+		mOutputPinIdFrameFactoryMap.erase(pinId);
 		auto msg = "<" + getId() + "> Output Pins Validation Failed.";
 		throw AIPException(AIP_PINS_VALIDATION_FAILED, msg);
 	}
@@ -234,16 +233,15 @@ bool Module::setNext(boost::shared_ptr<Module> next, vector<string> &pinIdArr, b
 
 	for (auto &pinId : pinIdArr)
 	{
-		if (mOutputPinIdMetadataMap.find(pinId) == mOutputPinIdMetadataMap.end())
+		if (mOutputPinIdFrameFactoryMap.find(pinId) == mOutputPinIdFrameFactoryMap.end())
 		{
 			auto msg = "pinId<" + pinId + "> doesn't exist in <" + this->getId() + ">";
 			mModules.erase(nextModuleId);
 			mConnections.erase(nextModuleId);
 			throw AIPException(AIP_PIN_NOTFOUND, msg);
 		}
-
-		framemetadata_sp metadata = mOutputPinIdMetadataMap[pinId];
-
+		
+		framemetadata_sp metadata = mOutputPinIdFrameFactoryMap[pinId]->getFrameMetadata();
 		// Set input meta here
 		try
 		{
@@ -279,9 +277,9 @@ bool Module::setNext(boost::shared_ptr<Module> next, bool open)
 
 bool Module::setNext(boost::shared_ptr<Module> next, bool open, bool isFeedback)
 {
-	pair<string, framemetadata_sp> me; // map element
+	pair<string, framefactory_sp> me; // map element
 	vector<string> pinIdArr;
-	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
 	{
 		pinIdArr.push_back(me.first);
 	}
@@ -380,7 +378,7 @@ framemetadata_sp Module::getFirstInputMetadata()
 
 framemetadata_sp Module::getFirstOutputMetadata()
 {
-	return mOutputPinIdMetadataMap.begin()->second;
+	return mOutputPinIdFrameFactoryMap.begin()->second->getFrameMetadata();
 }
 
 boost::container::deque<boost::shared_ptr<Module>> Module::getConnectedModules()
@@ -427,12 +425,20 @@ bool Module::init()
 		auto out = getFirstOutputMetadata();
 		out->copyHint(*in.get());
 	}
-	if (myNature != SINK)
+	if (myNature == SOURCE)
 	{
-		auto out = getFirstOutputMetadata();
-		mpFrameFactory.reset(new FrameFactory(out->getMemType(), mProps->maxConcurrentFrames));
+		pair<string, framefactory_sp> me; // map element
+		BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
+		{
+			auto metadata = me.second->getFrameMetadata();
+			if(!metadata->isSet())
+			{
+				throw AIPException(AIP_FATAL, "Source FrameFactory is constructed without metadata set");
+			}
+			me.second.reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
+		}
 	}
-	mpCommandFactory.reset(new FrameFactory(FrameMetadata::MemType::HOST));
+	mpCommandFactory.reset(new FrameFactory(mCommandMetadata));
 
 	mStopCount = 0;
 
@@ -493,7 +499,7 @@ bool Module::send(frame_container &frames, bool forceBlockingPush)
 			if (frames.find(pinId) != frames.end())
 			{
 				auto fIndex2 = frames[pinId]->fIndex2;
-				for (auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++)
+				for (auto me = mOutputPinIdFrameFactoryMap.cbegin(); me != mOutputPinIdFrameFactoryMap.cend(); me++)
 				{
 					if (frames.find(me->first) != frames.end())
 					{
@@ -515,7 +521,7 @@ bool Module::send(frame_container &frames, bool forceBlockingPush)
 			else
 			{
 				// try output pins - muxer comes here
-				for (auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++)
+				for (auto me = mOutputPinIdFrameFactoryMap.cbegin(); me != mOutputPinIdFrameFactoryMap.cend(); me++)
 				{
 					auto &pinId = me->first;
 					if (frames.find(pinId) != frames.end())
@@ -530,7 +536,7 @@ bool Module::send(frame_container &frames, bool forceBlockingPush)
 		else
 		{
 			// try for all output pins
-			for (auto me = mOutputPinIdMetadataMap.cbegin(); me != mOutputPinIdMetadataMap.cend(); me++)
+			for (auto me = mOutputPinIdFrameFactoryMap.cbegin(); me != mOutputPinIdFrameFactoryMap.cend(); me++)
 			{
 				auto &pinId = me->first;
 				if (frames.find(pinId) != frames.end())
@@ -624,14 +630,28 @@ string getPinIdByType(int type, metadata_by_pin &metadataMap)
 	return "";
 }
 
+string getPinIdByType(int type, framefactory_by_pin &metadataMap)
+{
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, metadataMap)
+	{
+		if (me.second->getFrameMetadata()->getFrameType() == type)
+		{
+			return me.first;
+		}
+	}
+
+	return "";
+}
+
 vector<string> Module::getAllOutputPinsByType(int type)
 {
 	vector<string> pins;
 
-	pair<string, framemetadata_sp> me; // map element
-	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
 	{
-		if (me.second->getFrameType() == type)
+		if (me.second->getFrameMetadata()->getFrameType() == type)
 		{
 			pins.push_back(me.first);
 		}
@@ -642,12 +662,12 @@ vector<string> Module::getAllOutputPinsByType(int type)
 
 string Module::getInputPinIdByType(int type)
 {
-	return getPinIdByType(type, mOutputPinIdMetadataMap);
+	return getPinIdByType(type, mInputPinIdMetadataMap);
 }
 
 string Module::getOutputPinIdByType(int type)
 {
-	return getPinIdByType(type, mOutputPinIdMetadataMap);
+	return getPinIdByType(type, mOutputPinIdFrameFactoryMap);
 }
 
 framemetadata_sp getMetadataByType(int type, metadata_by_pin &metadataMap)
@@ -679,6 +699,36 @@ int getNumberOfPinsByType(int type, metadata_by_pin &metadataMap)
 	return count;
 }
 
+// instead of global functions - make a detail class and make these functions public inside detail
+framemetadata_sp getMetadataByType(int type, framefactory_by_pin &frameFactoryMap)
+{
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, frameFactoryMap)
+	{
+		if (me.second->getFrameMetadata()->getFrameType() == type)
+		{
+			return me.second->getFrameMetadata();
+		}
+	}
+
+	return framemetadata_sp();
+}
+
+int getNumberOfPinsByType(int type, framefactory_by_pin &frameFactoryMap)
+{
+	int count = 0;
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, frameFactoryMap)
+	{
+		if (me.second->getFrameMetadata()->getFrameType() == type)
+		{
+			count += 1;
+		}
+	}
+
+	return count;
+}
+
 framemetadata_sp Module::getInputMetadataByType(int type)
 {
 	return getMetadataByType(type, mInputPinIdMetadataMap);
@@ -686,7 +736,7 @@ framemetadata_sp Module::getInputMetadataByType(int type)
 
 framemetadata_sp Module::getOutputMetadataByType(int type)
 {
-	return getMetadataByType(type, mOutputPinIdMetadataMap);
+	return getMetadataByType(type, mOutputPinIdFrameFactoryMap);
 }
 
 int Module::getNumberOfInputsByType(int type)
@@ -696,7 +746,7 @@ int Module::getNumberOfInputsByType(int type)
 
 int Module::getNumberOfOutputsByType(int type)
 {
-	return getNumberOfPinsByType(type, mOutputPinIdMetadataMap);
+	return getNumberOfPinsByType(type, mOutputPinIdFrameFactoryMap);
 }
 
 bool Module::isMetadataEmpty(framemetadata_sp &metatata)
@@ -725,49 +775,52 @@ frame_sp Module::getFrameByType(frame_container &frames, int frameType)
 	return frame_sp();
 }
 
+frame_sp Module::makeFrame()
+{
+	auto size = mOutputPinIdFrameFactoryMap.begin()->second->getFrameMetadata()->getDataSize();
+	auto pinId = mOutputPinIdFrameFactoryMap.begin()->first;
+	return makeFrame(size,pinId);
+}
+
 frame_sp Module::makeFrame(size_t size)
 {
-	return makeFrame(size, mOutputPinIdMetadataMap.begin()->second);
+	return makeFrame(size, mOutputPinIdFrameFactoryMap.begin()->second);
 }
 
 frame_sp Module::makeFrame(size_t size, string &pinId)
 {
-	return makeFrame(size, mOutputPinIdMetadataMap[pinId]);
+	return makeFrame(size,mOutputPinIdFrameFactoryMap[pinId]);
 }
 
-frame_sp Module::makeCommandFrame(size_t size, framemetadata_sp &metadata)
+frame_sp Module::makeCommandFrame(size_t size,framemetadata_sp& metadata)
 {
-	auto frame = mpCommandFactory->create(size, mpCommandFactory);
-	frame->setMetadata(metadata);
-
+	auto frame = mpCommandFactory->create(size, mpCommandFactory, metadata);
 	return frame;
 }
 
-frame_sp Module::makeFrame(size_t size, framemetadata_sp &metadata)
+frame_sp Module::makeFrame(size_t size,framefactory_sp& frameFactory)
 {
-	auto frame = mpFrameFactory->create(size, mpFrameFactory);
-	if (frame.get())
-	{
-		frame->setMetadata(metadata);
-	}
-	return frame;
+	return frameFactory->create(size, frameFactory);
 }
 
-frame_sp Module::makeFrame(frame_sp &bufferframe, size_t &size, framemetadata_sp &metadata)
+frame_sp Module::makeFrame(frame_sp &bigFrame, size_t &size, string &pinId)
 {
-	auto frame = mpFrameFactory->create(bufferframe, size, mpFrameFactory);
-	frame->setMetadata(metadata);
-	return frame;
+	return mOutputPinIdFrameFactoryMap[pinId]->create(bigFrame, size, mOutputPinIdFrameFactoryMap[pinId]);
+}
+
+void Module::setMetadata(std::string& pinId, framemetadata_sp& metadata){
+	mOutputPinIdFrameFactoryMap[pinId]->setMetadata(metadata);
+	return;
 }
 
 frame_sp Module::getEOSFrame()
 {
-	return mpFrameFactory->getEOSFrame();
+	return mpCommandFactory->getEOSFrame();
 }
 
 frame_sp Module::getEmptyFrame()
 {
-	return mpFrameFactory->getEmptyFrame();
+	return mpCommandFactory->getEmptyFrame();
 }
 
 void Module::operator()()
@@ -809,9 +862,26 @@ bool isMetadatset(metadata_by_pin &metadataMap)
 	return bSet;
 }
 
+bool isMetadatset(framefactory_by_pin &framefactoryMap)
+{
+	bool bSet = true;
+
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, framefactoryMap)
+	{
+		if (!me.second->getFrameMetadata()->isSet())
+		{
+			bSet = false;
+			break;
+		}
+	}
+
+	return bSet;
+}
+
 bool Module::shouldTriggerSOS()
 {
-	if (!isMetadatset(mInputPinIdMetadataMap) || !isMetadatset(mOutputPinIdMetadataMap))
+	if (!isMetadatset(mInputPinIdMetadataMap) || !isMetadatset(mOutputPinIdFrameFactoryMap))
 	{
 		return true;
 	}
@@ -829,7 +899,7 @@ bool Module::play(bool play)
 	}
 
 	auto metadata = framemetadata_sp(new PausePlayMetadata());
-	auto frame = makeFrame(metadata->getDataSize(), metadata);
+	auto frame = makeCommandFrame(metadata->getDataSize(), metadata);
 
 	auto buffer = (unsigned char *)frame->data();
 	memset(frame->data(), play, 1);
@@ -970,8 +1040,8 @@ void Module::sendEOS()
 
 	frame_container frames;
 	auto frame = frame_sp(new EoSFrame());
-	pair<string, framemetadata_sp> me; // map element
-	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
 	{
 		frames.insert(make_pair(me.first, frame));
 	}
@@ -1044,6 +1114,23 @@ bool Module::preProcessNonSource(frame_container &frames)
 			// remove frame from frames because it is still not ready to process frames
 			frames.erase(pinId);
 		}
+		else
+		{
+			if (myNature == TRANSFORM && !shouldTriggerSOS())
+			{
+				// only if shouldTriggerSOS returns false
+				pair<string, framefactory_sp> me; // map element
+				BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
+				{
+					auto metadata = me.second->getFrameMetadata();
+					if (!metadata->isSet())
+					{
+						throw AIPException(AIP_FATAL, "Transform FrameFactory is constructed without metadata set");
+					}
+					me.second.reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
+				}
+			}
+		}
 		// bug: outputmetadata can also be updated ? give a set function
 	}
 
@@ -1071,11 +1158,12 @@ bool Module::stepNonSource(frame_container &frames)
 
 bool Module::addEoPFrame(frame_container &frames)
 {
-	pair<string, framemetadata_sp> me; // map element
-	BOOST_FOREACH (me, mOutputPinIdMetadataMap)
+	pair<string, framefactory_sp> me; // map element
+	BOOST_FOREACH (me, mOutputPinIdFrameFactoryMap)
 	{
 		auto frame = frame_sp(new EoPFrame());
-		frame->setMetadata(me.second);
+		auto metadata = me.second->getFrameMetadata();
+		frame->setMetadata(metadata);
 		frames.insert(make_pair(me.first, frame));
 	}
 }

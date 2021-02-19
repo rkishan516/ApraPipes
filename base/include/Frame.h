@@ -25,6 +25,9 @@ public:
 	virtual bool isPausePlay();
 	virtual bool isCommand();	
 	framemetadata_sp getMetadata() { return mMetadata; }
+	// Make it private
+	// If someone wants to use it, make that class a friend class
+	void setMetadata(framemetadata_sp& _metadata) { mMetadata = _metadata; }
 	virtual void* data() const BOOST_ASIO_NOEXCEPT;
 	virtual std::size_t size() const BOOST_ASIO_NOEXCEPT;	
 protected:
@@ -33,7 +36,6 @@ protected:
 private:
 	void setDefaultValues();
 	void resetMemory();
-	void setMetadata(framemetadata_sp& _metadata) { mMetadata = _metadata; }
 	void *myOrig;
 	friend class FrameFactory;
 	boost::shared_ptr<FrameFactory> myMother; //so that the mother does not get destroyed before children	

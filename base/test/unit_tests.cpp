@@ -21,7 +21,8 @@ BOOST_AUTO_TEST_CASE(dummy_test)
 
 BOOST_AUTO_TEST_CASE(frame_factory_test)
 {
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::HOST));
+	framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::HOST));
+	framefactory_sp fact(new FrameFactory(metadata));
 	auto f1 = fact->create(1023, fact);//uses 1 chunk
 	auto f2 = fact->create(1024, fact);//uses 1 chunk
 	auto f3 = fact->create(1025, fact);//uses 2 chunks
@@ -33,7 +34,8 @@ BOOST_AUTO_TEST_CASE(multiple_que_test)
 {
 	{
 		boost::shared_ptr<FrameContainerQueue> q1 = boost::shared_ptr<FrameContainerQueue>(new FrameContainerQueue(20));
-		boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::HOST));
+		framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::HOST));
+		boost::shared_ptr<FrameFactory> fact(new FrameFactory(metadata));
 
 		{
 			auto f = fact->create(1023, fact);//uses 1 chunk
@@ -56,7 +58,8 @@ BOOST_AUTO_TEST_CASE(multiple_que_test)
 
 BOOST_AUTO_TEST_CASE(frame_factory_test_host_pinned)
 {
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::HOST_PINNED));
+	framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::HOST_PINNED));
+	boost::shared_ptr<FrameFactory> fact(new FrameFactory(metadata));
 	auto f1 = fact->create(1023, fact);//uses 1 chunk
 	auto f2 = fact->create(1024, fact);//uses 1 chunk
 	auto f3 = fact->create(1025, fact);//uses 2 chunks
@@ -66,7 +69,8 @@ BOOST_AUTO_TEST_CASE(frame_factory_test_host_pinned)
 
 BOOST_AUTO_TEST_CASE(frame_factory_test_cuda_device)
 {
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::CUDA_DEVICE));
+	framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::CUDA_DEVICE));
+	boost::shared_ptr<FrameFactory> fact(new FrameFactory(metadata));
 	auto f1 = fact->create(1023, fact);//uses 1 chunk
 	auto f2 = fact->create(1024, fact);//uses 1 chunk
 	auto f3 = fact->create(1025, fact);//uses 2 chunks
@@ -311,7 +315,8 @@ BOOST_AUTO_TEST_CASE(boost_pool_ordered_malloc_free)
 BOOST_AUTO_TEST_CASE(frame_que_test)
 {
 	FrameContainerQueue q(2);
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::HOST));
+	framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::HOST));
+	boost::shared_ptr<FrameFactory> fact(new FrameFactory(metadata));
 	{
 		auto f1 = fact->create(1023, fact);//uses 1 chunk
 		auto f2 = fact->create(1024, fact);//uses 1 chunk
@@ -377,7 +382,8 @@ void producer_consumer(bool isProducer, boost::shared_ptr<FrameFactory> fact, Fr
 BOOST_AUTO_TEST_CASE(two_threaed_framefactory_test)
 {
 	FrameContainerQueue q(20);
-	boost::shared_ptr<FrameFactory> fact(new FrameFactory(FrameMetadata::MemType::HOST));
+	framemetadata_sp metadata(new FrameMetadata(FrameMetadata::FrameType::GENERAL,FrameMetadata::MemType::HOST));
+	boost::shared_ptr<FrameFactory> fact(new FrameFactory(metadata));
 	std::thread t1(producer_consumer, true, fact, std::ref(q), 100000);
 	std::thread t2(producer_consumer, false, fact, std::ref(q), 100000);
 

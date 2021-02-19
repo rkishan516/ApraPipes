@@ -381,7 +381,7 @@ private:
 
 EffectsNPPI::EffectsNPPI(EffectsNPPIProps _props) : Module(TRANSFORM, "EffectsNPPI", _props), props(_props), mFrameLength(0), mFrameType(FrameMetadata::GENERAL)
 {
-	mDetail.reset(new Detail(_props, [&](size_t size) -> frame_sp {return makeFrame(size, mOutputMetadata); }));
+	mDetail.reset(new Detail(_props, [&](size_t size) -> frame_sp {return makeFrame(size); }));
 }
 
 EffectsNPPI::~EffectsNPPI() {}
@@ -455,9 +455,6 @@ bool EffectsNPPI::init()
 		return false;
 	}
 
-	auto metadata = getFirstInputMetadata();
-	setMetadata(metadata);
-
 	return true;
 }
 
@@ -469,7 +466,7 @@ bool EffectsNPPI::term()
 bool EffectsNPPI::process(frame_container &frames)
 {
 	auto frame = frames.cbegin()->second;
-	auto outFrame = makeFrame(mFrameLength, mOutputMetadata);
+	auto outFrame = makeFrame(mFrameLength);
 
 	mDetail->compute(frame->data(), outFrame->data());
 

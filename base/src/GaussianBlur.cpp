@@ -137,12 +137,6 @@ bool GaussianBlur::init()
         return false;
     }
 
-    auto inputMetadata = getFirstInputMetadata();
-    if (inputMetadata->isSet())
-    {
-		setMetadata(inputMetadata);
-    }
-
     return true;
 }
 
@@ -159,7 +153,7 @@ bool GaussianBlur::process(frame_container &frames)
 		return true;
 	}
 	
-	auto outFrame = makeFrame(mOutDataSize, mOutputMetadata);
+	auto outFrame = makeFrame(mOutDataSize);
 
 	if (!mDetail->compute(frame, outFrame))
 	{

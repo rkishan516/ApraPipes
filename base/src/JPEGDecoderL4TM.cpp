@@ -59,6 +59,7 @@ public:
 	{
 		return mDataSize;
 	}
+	std::string outputPinId;
 
 private:
 	boost::shared_ptr<JPEGDecoderL4TMHelper> decHelper;
@@ -127,6 +128,7 @@ bool JPEGDecoderL4TM::init()
 	{
 		throw AIPException(AIP_NOTSET, string("JPEGDecoderL4TM Output Frame Metadata parameters will be automatically set. Kindly remove."));
 	}
+	mDetail->outputPinId = getOutputPinIdByType(FrameMetadata::RAW_IMAGE);
 
 	return true;
 }
@@ -145,13 +147,13 @@ bool JPEGDecoderL4TM::process(frame_container &frames)
 	}
 
 	auto metadata = mDetail->getMetadata();
-	auto bufferFrame = makeFrame(mDetail->getDataSize(), metadata);
+	auto bufferFrame = makeFrame(mDetail->getDataSize());
 
 	auto frameLength = mDetail->compute(frame, bufferFrame);
 	
-	auto outFrame = makeFrame(bufferFrame, frameLength, metadata);
+	auto outFrame = makeFrame(bufferFrame, frameLength,mDetail->outputPinId);
 
-	frames.insert(make_pair(getOutputPinIdByType(FrameMetadata::RAW_IMAGE), outFrame));
+	frames.insert(make_pair(mDetail->outputPinId, outFrame));
 	send(frames);
 	return true;
 }

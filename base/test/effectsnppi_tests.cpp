@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(mono_1920x1080)
 
 }
 
-BOOST_AUTO_TEST_CASE(yuv420_640x360)
+BOOST_AUTO_TEST_CASE(yuv420_640x360, *boost::unit_test::disabled())
 {
 	auto width = 640;
 	auto height = 360;
@@ -667,7 +667,7 @@ BOOST_AUTO_TEST_CASE(kernel_test, *boost::unit_test::disabled())
 	cudaFree(V);
 }
 
-BOOST_AUTO_TEST_CASE(img_864x576)
+BOOST_AUTO_TEST_CASE(img_864x576, *boost::unit_test::disabled())
 {
 	auto width = 864;
 	auto height = 576;

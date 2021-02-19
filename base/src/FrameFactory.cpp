@@ -7,8 +7,9 @@
 
 #define LOG_FRAME_FACTORY
 
-FrameFactory::FrameFactory(FrameMetadata::MemType memType, size_t _maxConcurrentFrames) : maxConcurrentFrames(_maxConcurrentFrames)
+FrameFactory::FrameFactory(framemetadata_sp metadata, size_t _maxConcurrentFrames) : maxConcurrentFrames(_maxConcurrentFrames)
 {
+	auto memType = metadata->getMemType();
 	switch (memType)
 	{
 		case FrameMetadata::MemType::HOST_PINNED:
@@ -28,6 +29,7 @@ FrameFactory::FrameFactory(FrameMetadata::MemType memType, size_t _maxConcurrent
 	emptyFrame = frame_sp(new EmptyFrame());
 	counter = 0;
 	numberOfChunks = 0;
+	mMetadata = metadata;
 }
 FrameFactory::~FrameFactory()
 {
@@ -39,6 +41,11 @@ size_t getNumberOfChunks(size_t size)
 }
 
 frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory> &mother)
+{
+	return create(size, mother, mMetadata);
+}
+
+frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory> &mother, framemetadata_sp& metadata)
 {
 	boost::mutex::scoped_lock lock(m_mutex);
 	if (maxConcurrentFrames && counter >= maxConcurrentFrames)
@@ -53,6 +60,7 @@ frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory> &moth
 	auto outFrame = frame_sp(
 		frame_allocator.construct(memory_allocator->allocateChunks(n), size, mother),
 		boost::bind(&FrameFactory::destroy, this, _1));
+	outFrame->setMetadata(metadata);
 	return outFrame;
 }
 
@@ -65,7 +73,7 @@ void FrameFactory::destroy(Frame *pointer)
 	{
 		size_t n = getNumberOfChunks(pointer->size());
 		numberOfChunks.fetch_sub(n, memory_order_seq_cst);
-		memory_allocator->freeChunks(pointer->myOrig,n);
+		memory_allocator->freeChunks(pointer->myOrig, n);
 	}
 
 	auto mother = pointer->myMother;
@@ -97,14 +105,14 @@ frame_sp FrameFactory::create(frame_sp &frame, size_t size, boost::shared_ptr<Fr
 	{
 		numberOfChunks.fetch_sub(chunksToFree, memory_order_seq_cst);
 		auto ptr = (void *)((char *)origPtr + (newChunks * APRA_CHUNK_SZ));
-		memory_allocator->freeChunks(ptr,chunksToFree);
+		memory_allocator->freeChunks(ptr, chunksToFree);
 	}
 
 	frame->resetMemory(); // so that when destroyBuffer is called it should not free the memory
 	auto outFrame = frame_sp(
 		frame_allocator.construct(origPtr, size, mother),
 		boost::bind(&FrameFactory::destroy, this, _1));
-		outFrame->setMetadata();
+	outFrame->setMetadata(mMetadata);
 	return outFrame;
 }
 

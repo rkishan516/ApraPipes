@@ -16,7 +16,7 @@
 #include "FileWriterModule.h"
 #include "test_utils.h"
 
-BOOST_AUTO_TEST_SUITE(nvjpeg_combo_tests)
+BOOST_AUTO_TEST_SUITE(nvjpeg_combo_tests, *boost::unit_test::disabled())
 
 BOOST_AUTO_TEST_CASE(decode_encode_mono_1920x960)
 {	

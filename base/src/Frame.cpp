@@ -12,11 +12,6 @@ Frame::Frame(void *buff, size_t size, boost::shared_ptr<FrameFactory> mother):mu
 {
 	setDefaultValues();
 }
-Frame::Frame(void *buff, size_t size, framemetadata_sp& metadata):mutable_buffer(buff,size), myOrig(buff)
-{
-	setDefaultValues();
-	mMetadata = metadata;
-}
 Frame::~Frame() {
 	myMother.reset();
 }

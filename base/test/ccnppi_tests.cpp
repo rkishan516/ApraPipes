@@ -192,7 +192,7 @@ BOOST_AUTO_TEST_CASE(yuv420_640x360_to_bgra_640x360)
 	Test_Utils::saveOrCompare("./data/testOutput/ccnppi_tests_yuv420_640x360_to_bgra_640x360.raw", (const uint8_t *)outFrame->data(), outFrame->size(), 0);
 }
 
-BOOST_AUTO_TEST_CASE(yuv411_I_1920x1080__resize_to_jpg)
+BOOST_AUTO_TEST_CASE(yuv411_I_1920x1080__resize_to_jpg, *boost::unit_test::disabled())
 {
 	auto width = 1920;
 	auto height = 1080;

@@ -18,7 +18,7 @@
 
 BOOST_AUTO_TEST_SUITE(overlaynppi_tests)
 
-BOOST_AUTO_TEST_CASE(mono_1920x1080)
+BOOST_AUTO_TEST_CASE(mono_1920x1080, *boost::unit_test::disabled())
 {	
 	auto stream = cudastream_sp(new ApraCudaStream);
 
@@ -84,7 +84,7 @@ BOOST_AUTO_TEST_CASE(mono_1920x1080)
 	Test_Utils::saveOrCompare("./data/testOutput/overlaynppi_tests_mono_1920x1080_to_overlay_1920x1080_bgra.jpg", (const uint8_t *)outFrame->data(), outFrame->size(), 0);
 }
 
-BOOST_AUTO_TEST_CASE(mono_1920x1080_pos)
+BOOST_AUTO_TEST_CASE(mono_1920x1080_pos, *boost::unit_test::disabled())
 {
 	auto stream = cudastream_sp(new ApraCudaStream);
 
