@@ -1,16 +1,15 @@
 #pragma once
-
 #include "nvbuf_utils.h"
 
-class DMAUtilWrapper
+class DMAFDWrapper
 {
 public:
-    /* Always use this static method to create DMAUtilWrapper */
-    static DMAUtilWrapper *create(const Argus::Size2D<uint32_t> &size,
+    /* Always use this static method to create DMAFDWrapper */
+    static DMAFDWrapper *create(int width, int height,
                              NvBufferColorFormat colorFormat,
                              NvBufferLayout layout, EGLDisplay eglDisplay);
 
-    virtual ~DMAUtilWrapper();
+    virtual ~DMAFDWrapper();
 
     /* Return DMA buffer handle */
     int getFd() const { return m_fd; }
@@ -19,7 +18,7 @@ public:
     int tempFD;
 
 private:
-    DMAUtilWrapper(const Argus::Size2D<uint32_t> &size);
+    DMAFDWrapper();
 
     int m_fd;
     EGLImageKHR eglImage;

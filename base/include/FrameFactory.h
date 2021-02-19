@@ -36,6 +36,7 @@ public:
 	frame_sp getEOSFrame() {
 		return eosFrame;
 	}
+	size_t getNumberOfChunks(size_t size);
 	framemetadata_sp getFrameMetadata(){return mMetadata;}
 	void setMetadata(framemetadata_sp metadata) { mMetadata = metadata;}
 

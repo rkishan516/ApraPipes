@@ -22,6 +22,10 @@ IF(ENABLE_LINUX)
 	add_compile_definitions(LINUX)	
 ENDIF(ENABLE_LINUX)
 
+IF(ENABLE_ARM64)
+	add_compile_definitions(ARM64)	
+ENDIF(ENABLE_LINUX)
+
 list(APPEND CMAKE_PREFIX_PATH "/usr/lib/aarch64-linux-gnu/tegra")
 
 project(APRAPIPES)
@@ -236,7 +240,7 @@ IF(ENABLE_ARM64)
 		src/V4L2CUYUV420Converter.cpp
 		src/H264EncoderV4L2.cpp
 		src/DMABuffer.cpp
-		src/DMAUtilWrapper.cpp
+		src/DMAFDWrapper.cpp
 		src/NvArgusCameraHelper.cpp
 		src/NvArgusCamera.cpp
 	)
@@ -272,7 +276,7 @@ IF(ENABLE_ARM64)
 		include/H264EncoderV4L2.h
 		include/DMABuffer.h
 		include/DMAAllocator.h
-		include/DMAUtilWrapper.h
+		include/DMAFDWrapper.h
 		include/Allocators.h
 		include/NvArgusCameraHelper.h
 		include/NvArgusCamera.h
@@ -354,6 +358,7 @@ SET(UT_FILES
 	test/virtualcamerasink_tests.cpp
 	test/rtsppusher_tests.cpp
 	test/findexstrategy_tests.cpp
+	test/frame_factory_test_dma.cpp
 	${ARM64_UT_FILES}
 	${CUDA_UT_FILES}	
 )

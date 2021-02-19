@@ -1,11 +1,12 @@
-#include "DMAUtilWrapper.h"
+#include "DMAFDWrapper.h"
+#include "nvbuf_utils.h"
 #include "Logger.h"
 
-DMAUtilWrapper *DMAUtilWrapper::create(uint32_t height,uint32_t width,
+DMAFDWrapper *DMAFDWrapper::create(int width, int height,
                                     NvBufferColorFormat colorFormat,
                                     NvBufferLayout layout, EGLDisplay eglDisplay)
 {
-    DMAUtilWrapper *buffer = new DMAUtilWrapper(height,width);
+    DMAFDWrapper *buffer = new DMAFDWrapper();
     if (!buffer)
     {
         return nullptr;
@@ -38,11 +39,11 @@ DMAUtilWrapper *DMAUtilWrapper::create(uint32_t height,uint32_t width,
     return buffer;
 }
 
-DMAUtilWrapper::DMAUtilWrapper(uint32_t height,uint32_t width) : m_buffer(nullptr), eglImage(EGL_NO_IMAGE_KHR), m_fd(-1)
+DMAFDWrapper::DMAFDWrapper() : eglImage(EGL_NO_IMAGE_KHR), m_fd(-1)
 {
 }
 
-DMAUtilWrapper::~DMAUtilWrapper()
+DMAFDWrapper::~DMAFDWrapper()
 {
     if (eglImage != EGL_NO_IMAGE_KHR)
     {

@@ -1,63 +1,93 @@
 #pragma once
 #include "Allocators.h"
-#include "nvbuf_utils.h"
-#include "DMAUtilWrapper.h"
+#include "DMAFDWrapper.h"
+#include "FrameMetadataFactory.h"
 #include <deque>
 
 class DMAAllocator : public HostAllocator
 {
 private:
-    deque<DMAFDWrapper *> dmaFD;
-    int freeDmaCount;
-    // deque of DMAFD
-    // freebuffer count
+    std::deque<void *> dmaFD;
+    std::vector<DMAFDWrapper*>  dmaFDWrapperArr;
+    int freeDMACount;
+    EGLDisplay eglDisplay;
+    int height;
+    int width;
 
 public:
-    DMAAllocator(framemetadata_sp &framemetadata) : buff_allocator(APRA_CHUNK_SZ), freeDmaCount(10)
+    DMAAllocator(framemetadata_sp framemetadata) : freeDMACount(0)
     {
-        for (auto i = 0; i < freeDmaCount; i++)
+        if(framemetadata->getFrameType() != FrameMetadata::FrameType::RAW_IMAGE){
+            throw AIPException(AIP_FATAL, "Only Frame Type accepted are Raw Image");
+        }
+
+        eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        if(eglDisplay == EGL_NO_DISPLAY)
         {
-            dmaFDWrapper = DMABuffer::create(streamSize, NvBufferColorFormat_UYVY, NvBufferLayout_BlockLinear, eglDisplay);
+            throw AIPException(AIP_FATAL, "eglGetDisplay failed");
+        } 
+        
+        if (!eglInitialize(eglDisplay, NULL, NULL))
+        {
+            throw AIPException(AIP_FATAL, "eglInitialize failed");
+        } 
+        
+        if (framemetadata->getFrameType() == FrameMetadata::RAW_IMAGE)
+		{
+			auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(framemetadata);
+			width = inputRawMetadata->getWidth();
+            height = inputRawMetadata->getHeight();
+		}
+
+        // CHECK FOR IMAGE TYPE - SUPPORT ONLY UYVY
+    };
+
+    ~DMAAllocator()
+    {
+        for(auto wrapper : dmaFDWrapperArr)
+        {
+            delete wrapper;
+        }
+
+        eglTerminate(eglDisplay);
+        if (!eglReleaseThread())
+        {
+            LOG_ERROR << "ERROR eglReleaseThread failed";
+        }        
+    }
+
+    void *allocateChunks(size_t n)
+    {
+        if (freeDMACount == 0)
+        {
+            // remove hardcoding of UYVY
+            auto dmaFDWrapper = DMAFDWrapper::create(width, height, NvBufferColorFormat_UYVY, NvBufferLayout_BlockLinear, eglDisplay);
             if (!dmaFDWrapper)
             {
                 LOG_ERROR << "Failed to allocate dmaFDWrapper";
-                return false;
+                throw AIPException(AIP_FATAL, "Memory Allocation Failed.");
             }
-            dmaFD.push_back(dmaFDWrapper);
+            dmaFDWrapperArr.push_back(dmaFDWrapper);
+            freeDMACount++;
+            dmaFD.push_back(static_cast<void*>(&dmaFDWrapper->tempFD));
         }
-    };
-    ~DMAAllocator()
-    {
-        while (dmaFD)
-        {
-            DMAFDWrapper *dmaFDWrapper = dmaFD.front();
+        
+            auto fd = dmaFD.front();
             dmaFD.pop_front();
-            delete dmaFDWrapper;
-            dmaFDWrapper = nullptr;
-        }
-        // loop through your dq and destruction of DMAFD
-    }
-    void *allocateChunks(size_t n)
-    {
-        DMAFDWrapper *dmaFDWrapper;
-        if (freeDmaCount == 0)
-        {
-            dmaFDWrapper = dmaFD.front();
-            dmaFD.pop_front();
-            freeDmaCount--;
-        }
-        return dmaFDWrapper;
-        // if freecount = 0
-        // allocate
-        // and send 1 free buffer by pop
-        // reduce freecount
+            freeDMACount--;
+        
+
+        return fd;
     }
 
     void freeChunks(void *MemPtr, size_t n)
     {
         dmaFD.push_back(MemPtr);
-        freeDmaCount++;
-        // push
-        // inc freecount
+        freeDMACount++;
+    }
+
+    size_t getChunkSize()
+    {
+        return 1;
     }
 };

@@ -1,6 +1,9 @@
 #include "stdafx.h"
 #include <boost/bind.hpp>
 #include "FrameFactory.h"
+#ifdef ARM64
+#include "DMAAllocator.h"
+#endif
 #include "Frame.h"
 #include "Logger.h"
 #include "AIPExceptions.h"
@@ -12,6 +15,11 @@ FrameFactory::FrameFactory(framemetadata_sp metadata, size_t _maxConcurrentFrame
 	auto memType = metadata->getMemType();
 	switch (memType)
 	{
+#ifdef ARM64
+		case FrameMetadata::MemType::DMABUF:
+			memory_allocator = std::make_shared<DMAAllocator>(metadata);
+			break;
+#endif
 		case FrameMetadata::MemType::HOST_PINNED:
 			memory_allocator = std::make_shared<HostPinnedAllocator>();
 			break;
@@ -35,9 +43,10 @@ FrameFactory::~FrameFactory()
 {
 }
 
-size_t getNumberOfChunks(size_t size)
+size_t FrameFactory::getNumberOfChunks(size_t size)
 {
-	return (size + APRA_CHUNK_SZ - 1) / APRA_CHUNK_SZ;
+	auto chunkSize = memory_allocator->getChunkSize();
+	return (size + chunkSize - 1) / chunkSize;
 }
 
 frame_sp FrameFactory::create(size_t size, boost::shared_ptr<FrameFactory> &mother)
@@ -104,7 +113,7 @@ frame_sp FrameFactory::create(frame_sp &frame, size_t size, boost::shared_ptr<Fr
 	if (chunksToFree > 0)
 	{
 		numberOfChunks.fetch_sub(chunksToFree, memory_order_seq_cst);
-		auto ptr = (void *)((char *)origPtr + (newChunks * APRA_CHUNK_SZ));
+		auto ptr = (void *)((char *)origPtr + (newChunks * memory_allocator->getChunkSize()));
 		memory_allocator->freeChunks(ptr, chunksToFree);
 	}
 
@@ -119,7 +128,7 @@ frame_sp FrameFactory::create(frame_sp &frame, size_t size, boost::shared_ptr<Fr
 std::string FrameFactory::getPoolHealthRecord()
 {
 	std::ostringstream stream;
-	stream << "Chunks<" << numberOfChunks << "> TotalBytes<" << numberOfChunks * APRA_CHUNK_SZ << "> Frames<" << counter << ">";
+	stream << "Chunks<" << numberOfChunks << "> TotalBytes<" << numberOfChunks * memory_allocator->getChunkSize() << "> Frames<" << counter << ">";
 
 	return stream.str();
 }
