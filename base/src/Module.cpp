@@ -435,7 +435,7 @@ bool Module::init()
 			{
 				throw AIPException(AIP_FATAL, "Source FrameFactory is constructed without metadata set");
 			}
-			me.second.reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
+			mOutputPinIdFrameFactoryMap[me.first].reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
 		}
 	}
 	mpCommandFactory.reset(new FrameFactory(mCommandMetadata));
@@ -1126,8 +1126,8 @@ bool Module::preProcessNonSource(frame_container &frames)
 					if (!metadata->isSet())
 					{
 						throw AIPException(AIP_FATAL, "Transform FrameFactory is constructed without metadata set");
-					}
-					me.second.reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
+					}					
+					mOutputPinIdFrameFactoryMap[me.first].reset(new FrameFactory(metadata, mProps->maxConcurrentFrames));
 				}
 			}
 		}

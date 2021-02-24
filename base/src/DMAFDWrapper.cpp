@@ -2,11 +2,11 @@
 #include "nvbuf_utils.h"
 #include "Logger.h"
 
-DMAFDWrapper *DMAFDWrapper::create(int width, int height,
+DMAFDWrapper *DMAFDWrapper::create(int index, int width, int height,
                                     NvBufferColorFormat colorFormat,
                                     NvBufferLayout layout, EGLDisplay eglDisplay)
 {
-    DMAFDWrapper *buffer = new DMAFDWrapper();
+    DMAFDWrapper *buffer = new DMAFDWrapper(index);
     if (!buffer)
     {
         return nullptr;
@@ -28,18 +28,10 @@ DMAFDWrapper *DMAFDWrapper::create(int width, int height,
         return nullptr;
     }
 
-    buffer->eglImage = NvEGLImageFromFd(eglDisplay, buffer->m_fd);
-    if (buffer->eglImage == EGL_NO_IMAGE_KHR)
-    {
-        LOG_ERROR << "Failed to create EGLImage";
-        delete buffer;
-        return nullptr;
-    }
-
     return buffer;
 }
 
-DMAFDWrapper::DMAFDWrapper() : eglImage(EGL_NO_IMAGE_KHR), m_fd(-1)
+DMAFDWrapper::DMAFDWrapper(int _index) : eglImage(EGL_NO_IMAGE_KHR), m_fd(-1), index(_index)
 {
 }
 

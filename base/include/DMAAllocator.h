@@ -1,22 +1,29 @@
 #pragma once
 #include "Allocators.h"
 #include "DMAFDWrapper.h"
+#include "nvbuf_utils.h"
 #include "FrameMetadataFactory.h"
 #include <deque>
 
 class DMAAllocator : public HostAllocator
 {
 private:
-    std::deque<void *> dmaFD;
     std::vector<DMAFDWrapper*>  dmaFDWrapperArr;
     int freeDMACount;
+    NvBufferColorFormat colorFormat;
     EGLDisplay eglDisplay;
     int height;
     int width;
+    int count;
 
 public:
-    DMAAllocator(framemetadata_sp framemetadata) : freeDMACount(0)
+    DMAAllocator(framemetadata_sp framemetadata) : freeDMACount(0), count(0)
     {
+        if(!framemetadata->isSet())
+        {
+            return;
+        }
+
         if(framemetadata->getFrameType() != FrameMetadata::FrameType::RAW_IMAGE){
             throw AIPException(AIP_FATAL, "Only Frame Type accepted are Raw Image");
         }
@@ -32,14 +39,19 @@ public:
             throw AIPException(AIP_FATAL, "eglInitialize failed");
         } 
         
-        if (framemetadata->getFrameType() == FrameMetadata::RAW_IMAGE)
-		{
-			auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(framemetadata);
-			width = inputRawMetadata->getWidth();
-            height = inputRawMetadata->getHeight();
-		}
-
-        // CHECK FOR IMAGE TYPE - SUPPORT ONLY UYVY
+		auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(framemetadata);
+		width = inputRawMetadata->getWidth();
+        height = inputRawMetadata->getHeight();
+        switch(inputRawMetadata->getImageType()){
+            case ImageMetadata::UYVY:
+                colorFormat = NvBufferColorFormat_UYVY;
+                break;
+            case ImageMetadata::RGBA:
+                colorFormat = NvBufferColorFormat_ABGR32;
+                break;
+            default:
+                throw AIPException(AIP_FATAL, "Only Image Type accepted are UYVY or ARGB found " + std::to_string(inputRawMetadata->getImageType()));
+        }
     };
 
     ~DMAAllocator()
@@ -60,29 +72,27 @@ public:
     {
         if (freeDMACount == 0)
         {
-            // remove hardcoding of UYVY
-            auto dmaFDWrapper = DMAFDWrapper::create(width, height, NvBufferColorFormat_UYVY, NvBufferLayout_BlockLinear, eglDisplay);
+            auto dmaFDWrapper = DMAFDWrapper::create(count++, width, height, colorFormat, NvBufferLayout_Pitch, eglDisplay);
             if (!dmaFDWrapper)
             {
                 LOG_ERROR << "Failed to allocate dmaFDWrapper";
                 throw AIPException(AIP_FATAL, "Memory Allocation Failed.");
             }
             dmaFDWrapperArr.push_back(dmaFDWrapper);
+            dmaFDWrapper->tempFD = dmaFDWrapper->getFd();
             freeDMACount++;
-            dmaFD.push_back(static_cast<void*>(&dmaFDWrapper->tempFD));
         }
         
-            auto fd = dmaFD.front();
-            dmaFD.pop_front();
-            freeDMACount--;
-        
+        auto wrapper = dmaFDWrapperArr.front();
+        dmaFDWrapperArr.erase(dmaFDWrapperArr.begin());
+        freeDMACount--;
 
-        return fd;
+        return static_cast<void *>(wrapper);
     }
 
     void freeChunks(void *MemPtr, size_t n)
     {
-        dmaFD.push_back(MemPtr);
+        dmaFDWrapperArr.push_back(static_cast<DMAFDWrapper *>(MemPtr));
         freeDMACount++;
     }
 

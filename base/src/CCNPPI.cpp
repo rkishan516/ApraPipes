@@ -97,6 +97,9 @@ public:
 		{
 			lanuchAPPYUV411ToYUV444(src[0], srcPitch[0], dst, dstPitch[0], srcSize[0], props.stream);
 		}
+		else if(inputImageType == ImageMetadata::RGBA && outputImageType == ImageMetadata::RGB){
+			lanuchAPPRGBAToRGB(src[0], srcPitch[0], dst[0], dstPitch[0], srcSize[0], props.stream);
+		}
 		else if (inputImageType == ImageMetadata::MONO && outputImageType == ImageMetadata::BGRA)
 		{
 			auto status = nppiDup_8u_C1C4R_Ctx(src[0],
@@ -386,6 +389,7 @@ void CCNPPI::setMetadata(framemetadata_sp& metadata)
 		&& (props.imageType != ImageMetadata::BGRA || (inputImageType != ImageMetadata::MONO && inputImageType != ImageMetadata::YUV420))
 		&& (inputImageType != ImageMetadata::BGRA || props.imageType != ImageMetadata::YUV420)
 		&& (inputImageType != ImageMetadata::MONO || props.imageType != ImageMetadata::YUV420)
+		&& (inputImageType != ImageMetadata::RGBA || props.imageType != ImageMetadata::RGB)
 		)
 	{
 		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");

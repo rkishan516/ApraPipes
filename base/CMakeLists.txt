@@ -24,7 +24,7 @@ ENDIF(ENABLE_LINUX)
 
 IF(ENABLE_ARM64)
 	add_compile_definitions(ARM64)	
-ENDIF(ENABLE_LINUX)
+ENDIF(ENABLE_ARM64)
 
 list(APPEND CMAKE_PREFIX_PATH "/usr/lib/aarch64-linux-gnu/tegra")
 
@@ -56,6 +56,8 @@ IF(ENABLE_CUDA)
 
 		find_library(V4L2LIB v4l2)
 		find_library(EGLLIB EGL)
+		find_library(GLESv2LIB GLESv2)
+		find_library(X11LIB X11)
 		find_library(NVBUFUTILSLIB nvbuf_utils)
 		find_library(EGLSTREAM_CAMCONSUMER_LIB nveglstream_camconsumer)
 		find_library(NVARGUS_SOCKETCLINET_LIB nvargus_socketclient)
@@ -66,6 +68,8 @@ IF(ENABLE_CUDA)
 			${V4L2LIB}
 			${NVBUFUTILSLIB}
 			${EGLLIB}	
+			${GLESv2LIB}
+			${X11LIB}
 			${EGLSTREAM_CAMCONSUMER_LIB}
 			${NVARGUS_SOCKETCLINET_LIB}
 		)
@@ -219,6 +223,7 @@ SET(CUDA_IP_FILES
 	src/build_point_list.cu
 	src/CCKernel.cu
 	src/CCNPPI.cpp
+	src/CCDMA.cpp
 	src/EffectsKernel.cu
 	src/EffectsNPPI.cpp
 	src/GaussianBlur.cpp
@@ -243,6 +248,12 @@ IF(ENABLE_ARM64)
 		src/DMAFDWrapper.cpp
 		src/NvArgusCameraHelper.cpp
 		src/NvArgusCamera.cpp
+		src/NvV4L2Camera.cpp
+		src/NvV4L2CameraHelper.cpp
+		src/EglRenderer.cpp
+		src/NvEglRenderer.cpp
+		src/DMAUtils.cpp
+		src/CCDMACu.cpp
 	)
 ELSE()
 	SET(CUDA_IP_FILES ${CUDA_IP_FILES}		
@@ -257,6 +268,7 @@ SET(CUDA_IP_FILES_H
 	include/EffectsKernel.h
 	include/CCNPPI.h
 	include/CCKernel.h
+	include/CCDMA.h
 	include/ResizeNPPI.h
 	include/OverlayNPPI.h
 	include/OverlayKernel.h
@@ -280,6 +292,12 @@ IF(ENABLE_ARM64)
 		include/Allocators.h
 		include/NvArgusCameraHelper.h
 		include/NvArgusCamera.h
+		include/NvV4L2Camera.h
+		include/NvV4L2CameraHelper.h
+		include/EglRenderer.h
+		include/ApraNvEglRenderer.h
+		include/DMAUtils.h
+		include/CCDMACu.h
 	)
 ELSE()
 	SET(CUDA_IP_FILES_H ${CUDA_IP_FILES_H}		
@@ -310,6 +328,10 @@ IF (ENABLE_ARM64)
 		test/h264encoderv4l2_tests.cpp
 		test/nvarguscamerahelper_tests.cpp
 		test/nvarguscamera_tests.cpp
+		test/nvv4l2camera_test.cpp
+		test/nvv4l2camerahelper_test.cpp
+		test/ccdma_tests.cpp
+		test/eglrenderer_test.cpp
 	)
 ENDIF(ENABLE_ARM64)
 
