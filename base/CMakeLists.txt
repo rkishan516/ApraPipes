@@ -222,6 +222,7 @@ SET(CUDA_CORE_FILES_H
 SET(CUDA_IP_FILES
 	src/build_point_list.cu
 	src/CCKernel.cu
+	src/ColorMapKernel.cu
 	src/CCNPPI.cpp
 	src/CCDMA.cpp
 	src/EffectsKernel.cu
@@ -254,6 +255,7 @@ IF(ENABLE_ARM64)
 		src/NvEglRenderer.cpp
 		src/DMAUtils.cpp
 		src/CCDMACu.cpp
+		src/CCCuDMA.cpp
 	)
 ELSE()
 	SET(CUDA_IP_FILES ${CUDA_IP_FILES}		
@@ -298,6 +300,7 @@ IF(ENABLE_ARM64)
 		include/ApraNvEglRenderer.h
 		include/DMAUtils.h
 		include/CCDMACu.h
+		include/CCCuDMA.h
 	)
 ELSE()
 	SET(CUDA_IP_FILES_H ${CUDA_IP_FILES_H}		

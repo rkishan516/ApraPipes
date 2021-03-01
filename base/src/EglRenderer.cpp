@@ -19,11 +19,13 @@ public:
 
     bool init(int height, int width){
         renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);
+        // renderer1 = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset + width, y_offset);
         if (!renderer)
         {
             LOG_ERROR << "Failed to create EGL renderer";
             return false;
         }
+        renderer->setFPS(60);
 
         return true;
     }
@@ -34,6 +36,7 @@ public:
 	}
 
 	NvEglRenderer *renderer = nullptr;
+    NvEglRenderer *renderer1 = nullptr;
     int x_offset,y_offset;
 };
 
@@ -61,6 +64,7 @@ bool EglRenderer::process(frame_container& frames)
 	}
     
     mDetail->renderer->render((static_cast<DMAFDWrapper *>(frame->data()))->getFd());
+    // mDetail->renderer1->render((static_cast<DMAFDWrapper *>(frame->data()))->getFd());
     return true;
 }
 

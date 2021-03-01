@@ -1,4 +1,4 @@
-#include "CCDMACu.h"
+#include "CCCuDMA.h"
 #include "nvbuf_utils.h"
 #include "EGL/egl.h"
 #include "cudaEGL.h"
@@ -12,13 +12,14 @@
 #include "DMAUtils.h"
 #include <Argus/Argus.h>
 #include <deque>
+#include "CCKernel.h"
 
 #include "npp.h"
 
-class CCDMACu::Detail
+class CCCuDMA::Detail
 {
 public:
-	Detail(CCDMACuProps &_props) : props(_props)
+	Detail(CCCuDMAProps &_props) : props(_props)
 	{
         eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         if(eglDisplay == EGL_NO_DISPLAY)
@@ -40,48 +41,61 @@ public:
 	bool setMetadata(framemetadata_sp& input, framemetadata_sp& output)
 	{
 		auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(input);
-		resolution = {inputRawMetadata->getWidth(), inputRawMetadata->getHeight()};
-		srcStep = inputRawMetadata->getStep();
+		inputImageType = inputRawMetadata->getImageType();
+		inputChannels = inputRawMetadata->getChannels();
+		srcSize[0] = {inputRawMetadata->getWidth(), inputRawMetadata->getHeight()};
+		srcPitch[0] = static_cast<int>(inputRawMetadata->getStep());
 		auto outputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(output);
-		dstStep = outputRawMetadata->getStep() >> 2; // we are incrementing with float pointer - so by 4 is required
+		outputImageType = outputRawMetadata->getImageType();
+		outputChannels = outputRawMetadata->getChannels();
+		dstPitch = static_cast<int>(outputRawMetadata->getStep());
+        dstNextPtrOffset[0] = 0;
 
 		return true;
 	}
 
-	bool compute(frame_sp& frame, void* buffer)
+	bool compute(void* buffer, int outFD)
 	{
-        auto srcPtr = DMAUtils::getCudaPtrForFD((static_cast<DMAFDWrapper *>(frame->data())->tempFD), eglInImage,&pInResource,eglInFrame, eglDisplay);
-        
-		auto dst = static_cast<Npp32f*>(buffer);
+        auto dstPtr = DMAUtils::getCudaPtrForFD(outFD, eglOutImage,&pOutResource,eglOutFrame, eglDisplay);
+        for(auto i = 0; i < outputChannels; i++)
+		{
+			src[i] = static_cast<Npp32f*>(buffer) + dstNextPtrOffset[i];
+		}
 
-        lanuchAPPRGBAToRGB(srcPtr, srcStep, dst, dstStep, resolution, props.stream);
+        lanuchColorMapMONO2RGBA(src[0], srcPitch[0], dstPtr, dstPitch, srcSize[0], props.stream);
 
-        DMAUtils::freeCudaPtr(eglInImage,&pInResource, eglDisplay);
+        DMAUtils::freeCudaPtr(eglOutImage,&pOutResource, eglDisplay);
 
 		return true;
 	}
 
     EGLDisplay eglDisplay;
 private:
-	EGLImageKHR eglInImage;
-    CUgraphicsResource pInResource;
-    CUeglFrame eglInFrame;
+	EGLImageKHR eglOutImage;
+    CUgraphicsResource pOutResource;
+    CUeglFrame eglOutFrame;
+	ImageMetadata::ImageType inputImageType;
+	ImageMetadata::ImageType outputImageType;
+	int inputChannels;
+	int outputChannels;
+    Npp32f* src[4];
+	NppiSize srcSize[4];
+	int srcPitch[4];
+	NppiSize dstSize[4];
+	int dstPitch;
+    size_t dstNextPtrOffset[4];
 
-	size_t srcStep;
-	size_t dstStep;
-	NppiSize resolution;
-	
-	CCDMACuProps props;
+	CCCuDMAProps props;
 };
 
-CCDMACu::CCDMACu(CCDMACuProps _props) : Module(TRANSFORM, "CCDMACu", _props), props(_props), mFrameLength(0), mNoChange(false)
+CCCuDMA::CCCuDMA(CCCuDMAProps _props) : Module(TRANSFORM, "CCCuDMA", _props), props(_props), mFrameLength(0), mNoChange(false)
 {
 	mDetail.reset(new Detail(_props));	
 }
 
-CCDMACu::~CCDMACu() {}
+CCCuDMA::~CCCuDMA() {}
 
-bool CCDMACu::validateInputPins()
+bool CCCuDMA::validateInputPins()
 {
 	if (getNumberOfInputPins() != 1)
 	{
@@ -98,16 +112,16 @@ bool CCDMACu::validateInputPins()
 	}
 
 	FrameMetadata::MemType memType = metadata->getMemType();
-	if (memType != FrameMetadata::MemType::DMABUF)
+	if (memType != FrameMetadata::MemType::CUDA_DEVICE)
 	{
-		LOG_ERROR << "<" << getId() << ">::validateInputPins input memType is expected to be DMABUF. Actual<" << memType << ">";
+		LOG_ERROR << "<" << getId() << ">::validateInputPins input memType is expected to be CUDA_DEVICE. Actual<" << memType << ">";
 		return false;
 	}
 
 	return true;
 }
 
-bool CCDMACu::validateOutputPins()
+bool CCCuDMA::validateOutputPins()
 {
 	if (getNumberOfOutputPins() != 1)
 	{
@@ -124,23 +138,23 @@ bool CCDMACu::validateOutputPins()
 	}
 
 	FrameMetadata::MemType memType = metadata->getMemType();
-	if (memType != FrameMetadata::MemType::CUDA_DEVICE)
+	if (memType != FrameMetadata::MemType::DMABUF)
 	{
-		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be CUDA_DEVICE. Actual<" << memType << ">";
+		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be DMABUF. Actual<" << memType << ">";
 		return false;
 	}	
 
 	return true;
 }
 
-void CCDMACu::addInputPin(framemetadata_sp& metadata, string& pinId)
+void CCCuDMA::addInputPin(framemetadata_sp& metadata, string& pinId)
 {
 	Module::addInputPin(metadata, pinId);
 	auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
 	switch (props.imageType)
 	{
-		case ImageMetadata::RGB:
-			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::CUDA_DEVICE));
+		case ImageMetadata::RGBA:
+			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
 			break;
 		default:
 			throw AIPException(AIP_FATAL, "Unsupported Image Type<" + std::to_string(inputRawMetadata->getImageType()) + ">");
@@ -150,7 +164,7 @@ void CCDMACu::addInputPin(framemetadata_sp& metadata, string& pinId)
 	mOutputPinId = addOutputPin(mOutputMetadata);	
 }
 
-bool CCDMACu::init()
+bool CCCuDMA::init()
 {
 	if (!Module::init())
 	{
@@ -160,17 +174,19 @@ bool CCDMACu::init()
 	return true;
 }
 
-bool CCDMACu::term()
+bool CCCuDMA::term()
 {
 	return Module::term();
 }
 
-bool CCDMACu::process(frame_container &frames)
+bool CCCuDMA::process(frame_container &frames)
 {
+	cudaFree(0);
 	auto frame = frames.cbegin()->second;	
     auto outFrame = makeFrame(mOutputMetadata->getDataSize(),mOutputPinId);
+    auto outFd = (static_cast<DMAFDWrapper *>(outFrame->data()))->tempFD;
 
-    mDetail->compute(frame,outFrame->data());
+    mDetail->compute(frame->data(),outFd);
 
 	frames.insert(make_pair(mOutputPinId, outFrame));
 	send(frames);
@@ -178,7 +194,7 @@ bool CCDMACu::process(frame_container &frames)
 	return true;
 }
 
-bool CCDMACu::processSOS(frame_sp &frame)
+bool CCCuDMA::processSOS(frame_sp &frame)
 {
 	auto metadata = frame->getMetadata();
 	setMetadata(metadata);
@@ -186,7 +202,7 @@ bool CCDMACu::processSOS(frame_sp &frame)
 	return true;
 }
 
-void CCDMACu::setMetadata(framemetadata_sp& metadata)
+void CCCuDMA::setMetadata(framemetadata_sp& metadata)
 {
 	mInputFrameType = metadata->getFrameType();
 
@@ -210,24 +226,25 @@ void CCDMACu::setMetadata(framemetadata_sp& metadata)
 		return;
 	}
 
-	if (!(props.imageType == ImageMetadata::RGB && inputImageType == ImageMetadata::RGBA))
+	if (!(props.imageType == ImageMetadata::RGBA && inputImageType == ImageMetadata::MONO))
 	{
 		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");
 	}
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mOutputMetadata);
-	RawImageMetadata outputMetadata(width, height, props.imageType, CV_32FC3, 512, CV_32F, FrameMetadata::CUDA_DEVICE, true);		
+	RawImageMetadata outputMetadata(width, height, props.imageType, CV_8UC4, 512, CV_8U, FrameMetadata::DMABUF, true);		
 	rawOutMetadata->setData(outputMetadata);
+	
 
 	mFrameLength = mOutputMetadata->getDataSize();
-	mDetail->setMetadata(metadata, mOutputMetadata);
+	mDetail->setMetadata(metadata, mOutputMetadata);	
 }
 
-bool CCDMACu::shouldTriggerSOS()
+bool CCCuDMA::shouldTriggerSOS()
 {
 	return mFrameLength == 0;
 }
 
-bool CCDMACu::processEOS(string& pinId)
+bool CCCuDMA::processEOS(string& pinId)
 {
 	mFrameLength = 0;
 	return true;

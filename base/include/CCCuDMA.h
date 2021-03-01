@@ -8,10 +8,10 @@
 
 #include <deque>
 
-class CCDMACuProps : public ModuleProps
+class CCCuDMAProps : public ModuleProps
 {
 public:
-	CCDMACuProps(ImageMetadata::ImageType _imageType, cudastream_sp& _stream)
+	CCCuDMAProps(ImageMetadata::ImageType _imageType, cudastream_sp& _stream)
 	{
 		stream_sp = _stream;
 		stream = _stream->getCudaStream();
@@ -22,12 +22,12 @@ public:
 	ImageMetadata::ImageType imageType;	
 };
 
-class CCDMACu : public Module
+class CCCuDMA : public Module
 {
 
 public:
-	CCDMACu(CCDMACuProps _props);
-	virtual ~CCDMACu();
+	CCCuDMA(CCCuDMAProps _props);
+	virtual ~CCCuDMA();
 	bool init();
 	bool term();
 
@@ -51,5 +51,5 @@ private:
 	size_t mFrameLength;
 	framemetadata_sp mOutputMetadata;
 	std::string mOutputPinId;
-	CCDMACuProps props;		
+	CCCuDMAProps props;		
 };

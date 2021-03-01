@@ -97,9 +97,6 @@ public:
 		{
 			lanuchAPPYUV411ToYUV444(src[0], srcPitch[0], dst, dstPitch[0], srcSize[0], props.stream);
 		}
-		else if(inputImageType == ImageMetadata::RGBA && outputImageType == ImageMetadata::RGB){
-			lanuchAPPRGBAToRGB(src[0], srcPitch[0], dst[0], dstPitch[0], srcSize[0], props.stream);
-		}
 		else if (inputImageType == ImageMetadata::MONO && outputImageType == ImageMetadata::BGRA)
 		{
 			auto status = nppiDup_8u_C1C4R_Ctx(src[0],

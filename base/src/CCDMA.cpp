@@ -19,10 +19,15 @@ class CCDMA::Detail
 {
 public:
 	Detail(CCDMAProps &_props) : props(_props)
-	{       
+	{
+        dest_rect.top = 28;
+        dest_rect.left = 448;
+        dest_rect.width = 1024;
+        dest_rect.height = 1024;   
 		memset(&transParams, 0, sizeof(transParams));
 		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER;
-		transParams.transform_filter = NvBufferTransform_Filter_Smart;		
+		transParams.transform_filter = NvBufferTransform_Filter_Smart;
+		transParams.dst_rect = dest_rect;
 	}
 
 	~Detail()
@@ -39,6 +44,7 @@ public:
 	}
 
 public:
+	NvBufferRect dest_rect;
 	framemetadata_sp outputMetadata;
 	std::string outputPinId;
 	CCDMAProps props;
@@ -183,7 +189,7 @@ void CCDMA::setMetadata(framemetadata_sp& metadata)
 	}
 	
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mDetail->outputMetadata);
-	RawImageMetadata outputMetadata(width, height, mDetail->props.imageType, type, 512, depth, FrameMetadata::DMABUF, true);		
+	RawImageMetadata outputMetadata(1024, 1024, mDetail->props.imageType, CV_8UC4, 512, depth, FrameMetadata::DMABUF, true);		
 	rawOutMetadata->setData(outputMetadata);
 }
 
