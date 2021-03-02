@@ -17,14 +17,13 @@ __global__ void appColorMapMONO2RGBA(const Npp32f* src, Npp8u* dst, int nSrcStep
 
 	int x_ = 4 * x;
 	int dst_offset = y * rDstStep + x_;
-	int offset = y* nSrcStep;
-    Npp8u amp = *(src + offset);
-	amp *= 255;
-    int b = min(255,amp+1);
+	int offset = y* nSrcStep + x;
+    auto ampf = *(src + offset);
+	int amp = static_cast<int>(ampf*255);
 	dst[dst_offset+0] = static_cast<Npp8u>(jet[amp][0] * 255);
 	dst[dst_offset+1] = static_cast<Npp8u>(jet[amp][1] * 255);
 	dst[dst_offset+2] = static_cast<Npp8u>(jet[amp][2] * 255);
-    *(dst+dst_offset+3) = static_cast<Npp8u>(255);
+    *(dst+dst_offset+3) = 255;
 
 }
 
@@ -32,5 +31,5 @@ void lanuchColorMapMONO2RGBA(const Npp32f* src, int nSrcStep, Npp8u* dst, int rD
 {
 	dim3 block(32, 32); 
 	dim3 grid((oSizeROI.width + block.x - 1) / block.x, (oSizeROI.height + block.y - 1) / block.y);
-	appColorMapMONO2RGBA <<<grid, block, 0, stream>>> (src, dst, nSrcStep, rDstStep, oSizeROI.width >> 2, oSizeROI.height);
+	appColorMapMONO2RGBA <<<grid, block, 0, stream>>> (src, dst, nSrcStep, rDstStep, oSizeROI.width, oSizeROI.height);
 }

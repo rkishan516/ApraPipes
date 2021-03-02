@@ -7,7 +7,7 @@ class EglRenderer::Detail
 {
 
 public:
-	Detail(int _x_offset, int _y_offset): x_offset(_x_offset), y_offset(_y_offset) {}
+	Detail(int _x_offset, int _y_offset, int _height, int _width): x_offset(_x_offset), y_offset(_y_offset), width(_width), height(_height) {}
 
 	~Detail() 
     {
@@ -17,9 +17,12 @@ public:
         }
     }
 
-    bool init(int height, int width){
-        renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);
-        // renderer1 = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset + width, y_offset);
+    bool init(int _height, int _width){
+        if(height && width){
+            renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);
+        }else{
+            renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, _width, _height, x_offset, y_offset);
+        }
         if (!renderer)
         {
             LOG_ERROR << "Failed to create EGL renderer";
@@ -36,13 +39,12 @@ public:
 	}
 
 	NvEglRenderer *renderer = nullptr;
-    NvEglRenderer *renderer1 = nullptr;
-    int x_offset,y_offset;
+    int x_offset,y_offset,width,height;
 };
 
 EglRenderer::EglRenderer(EglRendererProps props) : Module(SINK, "EglRenderer", props)
 {
-    mDetail.reset(new Detail(props.x_offset,props.y_offset));
+    mDetail.reset(new Detail(props.x_offset,props.y_offset, props.height, props.width));
 }
 
 EglRenderer::~EglRenderer() {}
@@ -64,7 +66,6 @@ bool EglRenderer::process(frame_container& frames)
 	}
     
     mDetail->renderer->render((static_cast<DMAFDWrapper *>(frame->data()))->getFd());
-    // mDetail->renderer1->render((static_cast<DMAFDWrapper *>(frame->data()))->getFd());
     return true;
 }
 

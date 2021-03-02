@@ -111,11 +111,11 @@ void lanuchAPPUYVYToBGR(const Npp8u* src,int nSrcStep, Npp8u* dst,int rDstStep, 
 void lanuchAPPUYVYToBGRA(const Npp8u* src,int nSrcStep, Npp8u* dst,int rDstStep, NppiSize oSizeROI){
 	dim3 block(32, 32); 
 	dim3 grid((oSizeROI.width + block.x - 1) / (2 * block.x), (oSizeROI.height + block.y - 1) / block.y);
-	appUYVYToBGR <<<grid, block, 0>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width >> 2, oSizeROI.height,true);
+	appUYVYToBGR <<<grid, block, 0>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width, oSizeROI.height,true);
 }
 
 void lanuchAPPRGBAToRGB(const Npp8u* src,int nSrcStep, Npp32f* dst,int rDstStep, NppiSize oSizeROI, cudaStream_t stream){
 	dim3 block(32, 32); 
 	dim3 grid((oSizeROI.width + block.x - 1) / (1 * block.x), (oSizeROI.height + block.y - 1) / block.y);
-	appRGBAToRGB <<<grid, block, 0, stream>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width >> 2, oSizeROI.height);
+	appRGBAToRGB <<<grid, block, 0, stream>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width, oSizeROI.height);
 }

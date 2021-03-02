@@ -118,7 +118,12 @@ Module::Module(Kind nature, string name, ModuleProps _props) : mRunning(false), 
 
 	pacer = boost::shared_ptr<PaceMaker>(new PaceMaker(_props.fps));
 	auto tempId = getId();
-	mProfiler.reset(new Profiler(tempId, _props.logHealth, _props.logHealthFrequency, [&]() -> std::string { return mpFrameFactory->getPoolHealthRecord(); }));
+	mProfiler.reset(new Profiler(tempId, _props.logHealth, _props.logHealthFrequency, [&]() -> std::string {
+		if(!mpFrameFactory.get()){
+			return "";
+		}
+		 return mpFrameFactory->getPoolHealthRecord(); 
+	}));
 	if (_props.skipN > _props.skipD)
 	{
 		throw AIPException(AIP_ROI_OUTOFRANGE, "skipN <= skipD");

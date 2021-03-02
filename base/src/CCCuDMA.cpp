@@ -44,7 +44,7 @@ public:
 		inputImageType = inputRawMetadata->getImageType();
 		inputChannels = inputRawMetadata->getChannels();
 		srcSize[0] = {inputRawMetadata->getWidth(), inputRawMetadata->getHeight()};
-		srcPitch[0] = static_cast<int>(inputRawMetadata->getStep());
+		srcPitch[0] = static_cast<int>(inputRawMetadata->getStep()) >> 2;
 		auto outputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(output);
 		outputImageType = outputRawMetadata->getImageType();
 		outputChannels = outputRawMetadata->getChannels();
@@ -206,25 +206,12 @@ void CCCuDMA::setMetadata(framemetadata_sp& metadata)
 {
 	mInputFrameType = metadata->getFrameType();
 
-	int width = NOT_SET_NUM;
-	int height = NOT_SET_NUM;
-	int type = NOT_SET_NUM;
-	int depth = NOT_SET_NUM;	
-	ImageMetadata::ImageType inputImageType = ImageMetadata::MONO;
-
 	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
-	width = rawMetadata->getWidth();
-	height = rawMetadata->getHeight();
-	type = rawMetadata->getType();
-	depth = rawMetadata->getDepth();
-	inputImageType = rawMetadata->getImageType();
-
-	mNoChange = false;
-	if (inputImageType == props.imageType)
-	{
-		mNoChange = true;
-		return;
-	}
+	auto width = rawMetadata->getWidth();
+	auto height = rawMetadata->getHeight();
+	auto type = rawMetadata->getType();
+	auto depth = rawMetadata->getDepth();
+	auto inputImageType = rawMetadata->getImageType();
 
 	if (!(props.imageType == ImageMetadata::RGBA && inputImageType == ImageMetadata::MONO))
 	{
