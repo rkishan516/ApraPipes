@@ -48,7 +48,7 @@ private:
 	bool mNoChange;
 	int mInputFrameType;
 	int mOutputFrameType;
-	size_t mFrameLength;
+	size_t mFrameChecker;
 	framemetadata_sp mOutputMetadata;
 	std::string mOutputPinId;
 	CCCuDMAProps props;		

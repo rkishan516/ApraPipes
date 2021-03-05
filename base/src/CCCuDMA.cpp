@@ -54,26 +54,33 @@ public:
 		return true;
 	}
 
-	bool compute(void* buffer, int outFD)
+	bool rgbaSetMetadata(framemetadata_sp& input){
+		auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(input);
+		rgbaPitch = static_cast<int>(inputRawMetadata->getStep());
+		rgbaRowSize = inputRawMetadata->getRowSize();
+		rgbaHeight = inputRawMetadata->getHeight();
+	}
+
+	bool compute(void* buffer, DMAFDWrapper* rgbaDMAFdWrapper, DMAFDWrapper* outDMAFdWrapper)
 	{
-        auto dstPtr = DMAUtils::getCudaPtrForFD(outFD, eglOutImage,&pOutResource,eglOutFrame, eglDisplay);
+		auto rgbaBuffer = rgbaDMAFdWrapper->cudaPtr;
+        auto dstPtr = outDMAFdWrapper->cudaPtr;
         for(auto i = 0; i < outputChannels; i++)
 		{
 			src[i] = static_cast<Npp32f*>(buffer) + dstNextPtrOffset[i];
 		}
 
-        lanuchColorMapMONO2RGBA(src[0], srcPitch[0], dstPtr, dstPitch, srcSize[0], props.stream);
+		cudaMemcpy2DAsync(dstPtr, dstPitch, rgbaBuffer, rgbaPitch, rgbaRowSize, rgbaHeight, cudaMemcpyDeviceToDevice, props.stream);
 
-        DMAUtils::freeCudaPtr(eglOutImage,&pOutResource, eglDisplay);
+        lanuchColorMapMONO2RGBA(src[0], srcPitch[0], dstPtr + srcSize[0].width * 4, dstPitch, srcSize[0], props.stream);
 
 		return true;
 	}
 
     EGLDisplay eglDisplay;
 private:
-	EGLImageKHR eglOutImage;
-    CUgraphicsResource pOutResource;
-    CUeglFrame eglOutFrame;
+	int rgbaPitch, rgbaHeight;
+	size_t rgbaRowSize;
 	ImageMetadata::ImageType inputImageType;
 	ImageMetadata::ImageType outputImageType;
 	int inputChannels;
@@ -88,7 +95,7 @@ private:
 	CCCuDMAProps props;
 };
 
-CCCuDMA::CCCuDMA(CCCuDMAProps _props) : Module(TRANSFORM, "CCCuDMA", _props), props(_props), mFrameLength(0), mNoChange(false)
+CCCuDMA::CCCuDMA(CCCuDMAProps _props) : Module(TRANSFORM, "CCCuDMA", _props), props(_props), mFrameChecker(0), mNoChange(false)
 {
 	mDetail.reset(new Detail(_props));	
 }
@@ -97,11 +104,11 @@ CCCuDMA::~CCCuDMA() {}
 
 bool CCCuDMA::validateInputPins()
 {
-	if (getNumberOfInputPins() != 1)
-	{
-		LOG_ERROR << "<" << getId() << ">::validateInputPins size is expected to be 1. Actual<" << getNumberOfInputPins() << ">";
-		return false;
-	}
+	// if (getNumberOfInputPins() != 1)
+	// {
+	// 	LOG_ERROR << "<" << getId() << ">::validateInputPins size is expected to be 2. Actual<" << getNumberOfInputPins() << ">";
+	// 	return false;
+	// }
 
 	framemetadata_sp metadata = getFirstInputMetadata();
 	FrameMetadata::FrameType frameType = metadata->getFrameType();
@@ -112,9 +119,9 @@ bool CCCuDMA::validateInputPins()
 	}
 
 	FrameMetadata::MemType memType = metadata->getMemType();
-	if (memType != FrameMetadata::MemType::CUDA_DEVICE)
+	if (memType != FrameMetadata::MemType::CUDA_DEVICE && memType != FrameMetadata::MemType::DMABUF)
 	{
-		LOG_ERROR << "<" << getId() << ">::validateInputPins input memType is expected to be CUDA_DEVICE. Actual<" << memType << ">";
+		LOG_ERROR << "<" << getId() << ">::validateInputPins input memType is expected to be CUDA_DEVICE or DMABUF. Actual<" << memType << ">";
 		return false;
 	}
 
@@ -151,17 +158,20 @@ void CCCuDMA::addInputPin(framemetadata_sp& metadata, string& pinId)
 {
 	Module::addInputPin(metadata, pinId);
 	auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
-	switch (props.imageType)
+	switch (inputRawMetadata->getImageType())
 	{
 		case ImageMetadata::RGBA:
-			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
+			break;
+		case ImageMetadata::MONO:
+			if(!mOutputMetadata){
+				mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
+				mOutputMetadata->copyHint(*metadata.get());
+				mOutputPinId = addOutputPin(mOutputMetadata);
+			}
 			break;
 		default:
 			throw AIPException(AIP_FATAL, "Unsupported Image Type<" + std::to_string(inputRawMetadata->getImageType()) + ">");
-	}
-
-	mOutputMetadata->copyHint(*metadata.get());
-	mOutputPinId = addOutputPin(mOutputMetadata);	
+	}	
 }
 
 bool CCCuDMA::init()
@@ -182,11 +192,20 @@ bool CCCuDMA::term()
 bool CCCuDMA::process(frame_container &frames)
 {
 	cudaFree(0);
-	auto frame = frames.cbegin()->second;	
+	frame_sp rgba_frame, mono_frame;
+	for (auto const& element : frames)
+	{
+		auto frame = element.second;
+		auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(frame->getMetadata());
+		if(rawOutMetadata->getImageType() == ImageMetadata::ImageType::RGBA){
+			rgba_frame = frame;
+		}else{
+			mono_frame = frame;
+		}
+	}
     auto outFrame = makeFrame(mOutputMetadata->getDataSize(),mOutputPinId);
-    auto outFd = (static_cast<DMAFDWrapper *>(outFrame->data()))->tempFD;
 
-    mDetail->compute(frame->data(),outFd);
+    mDetail->compute(mono_frame->data(),(static_cast<DMAFDWrapper *>(rgba_frame->data())) ,(static_cast<DMAFDWrapper *>(outFrame->data())));
 
 	frames.insert(make_pair(mOutputPinId, outFrame));
 	send(frames);
@@ -197,7 +216,13 @@ bool CCCuDMA::process(frame_container &frames)
 bool CCCuDMA::processSOS(frame_sp &frame)
 {
 	auto metadata = frame->getMetadata();
-	setMetadata(metadata);
+	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
+	if(rawMetadata->getImageType() == ImageMetadata::MONO){
+		setMetadata(metadata);
+	}else{
+		mDetail->rgbaSetMetadata(metadata);
+	}
+	mFrameChecker++;
 
 	return true;
 }
@@ -218,21 +243,18 @@ void CCCuDMA::setMetadata(framemetadata_sp& metadata)
 		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");
 	}
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mOutputMetadata);
-	RawImageMetadata outputMetadata(width, height, props.imageType, CV_8UC4, 512, CV_8U, FrameMetadata::DMABUF, true);		
+	RawImageMetadata outputMetadata(2*width, height, props.imageType, CV_8UC4, 512, CV_8U, FrameMetadata::DMABUF, true);		
 	rawOutMetadata->setData(outputMetadata);
-	
-
-	mFrameLength = mOutputMetadata->getDataSize();
-	mDetail->setMetadata(metadata, mOutputMetadata);	
+	mDetail->setMetadata(metadata, mOutputMetadata);
 }
 
 bool CCCuDMA::shouldTriggerSOS()
 {
-	return mFrameLength == 0;
+	return (mFrameChecker == 0 || mFrameChecker == 1);
 }
 
 bool CCCuDMA::processEOS(string& pinId)
 {
-	mFrameLength = 0;
+	mFrameChecker = 0;
 	return true;
 }

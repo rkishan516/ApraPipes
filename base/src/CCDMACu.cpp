@@ -50,13 +50,11 @@ public:
 
 	bool compute(frame_sp& frame, void* buffer)
 	{
-        auto srcPtr = DMAUtils::getCudaPtrForFD((static_cast<DMAFDWrapper *>(frame->data())->tempFD), eglInImage,&pInResource,eglInFrame, eglDisplay);
+        auto srcPtr = (static_cast<DMAFDWrapper *>(frame->data())->cudaPtr);
         
 		auto dst = static_cast<Npp32f*>(buffer);
 
         lanuchAPPRGBAToRGB(srcPtr, srcStep, dst, dstStep, resolution, props.stream);
-
-        DMAUtils::freeCudaPtr(eglInImage,&pInResource, eglDisplay);
 
 		return true;
 	}
@@ -190,25 +188,12 @@ void CCDMACu::setMetadata(framemetadata_sp& metadata)
 {
 	mInputFrameType = metadata->getFrameType();
 
-	int width = NOT_SET_NUM;
-	int height = NOT_SET_NUM;
-	int type = NOT_SET_NUM;
-	int depth = NOT_SET_NUM;	
-	ImageMetadata::ImageType inputImageType = ImageMetadata::MONO;
-
 	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
-	width = rawMetadata->getWidth();
-	height = rawMetadata->getHeight();
-	type = rawMetadata->getType();
-	depth = rawMetadata->getDepth();
-	inputImageType = rawMetadata->getImageType();
-
-	mNoChange = false;
-	if (inputImageType == props.imageType)
-	{
-		mNoChange = true;
-		return;
-	}
+	auto width = rawMetadata->getWidth();
+	auto height = rawMetadata->getHeight();
+	auto type = rawMetadata->getType();
+	auto depth = rawMetadata->getDepth();
+	auto inputImageType = rawMetadata->getImageType();
 
 	if (!(props.imageType == ImageMetadata::RGB && inputImageType == ImageMetadata::RGBA))
 	{

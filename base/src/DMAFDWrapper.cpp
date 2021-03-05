@@ -1,12 +1,14 @@
 #include "DMAFDWrapper.h"
+#include "DMAUtils.h"
 #include "nvbuf_utils.h"
 #include "Logger.h"
+#include "cuda_runtime.h"
 
 DMAFDWrapper *DMAFDWrapper::create(int index, int width, int height,
                                     NvBufferColorFormat colorFormat,
                                     NvBufferLayout layout, EGLDisplay eglDisplay)
 {
-    DMAFDWrapper *buffer = new DMAFDWrapper(index);
+    DMAFDWrapper *buffer = new DMAFDWrapper(index, eglDisplay);
     if (!buffer)
     {
         return nullptr;
@@ -28,10 +30,23 @@ DMAFDWrapper *DMAFDWrapper::create(int index, int width, int height,
         return nullptr;
     }
 
+    NvBufferMemMap(buffer->m_fd, 0, NvBufferMem_Read_Write, &(buffer->hostPtr));
+	NvBufferMemSyncForCpu(buffer->m_fd, 0, &(buffer->hostPtr));
+    if(colorFormat == NvBufferColorFormat_ARGB32){
+        cudaFree(0);
+        buffer->eglImage = NvEGLImageFromFd(eglDisplay, buffer->m_fd);
+        if(buffer->eglImage == EGL_NO_IMAGE_KHR){
+            LOG_ERROR << "Failed to create eglImage";
+            delete buffer;
+            return nullptr;
+        }
+        buffer->cudaPtr = DMAUtils::getCudaPtr(buffer->eglImage,&buffer->pResource,buffer->eglFrame, eglDisplay);
+    }
+
     return buffer;
 }
 
-DMAFDWrapper::DMAFDWrapper(int _index) : eglImage(EGL_NO_IMAGE_KHR), m_fd(-1), index(_index)
+DMAFDWrapper::DMAFDWrapper(int _index, EGLDisplay _eglDisplay) : eglImage(EGL_NO_IMAGE_KHR), m_fd(-1), index(_index), eglDisplay(_eglDisplay)
 {
 }
 
@@ -39,6 +54,7 @@ DMAFDWrapper::~DMAFDWrapper()
 {
     if (eglImage != EGL_NO_IMAGE_KHR)
     {
+        DMAUtils::freeCudaPtr(eglImage,&pResource, eglDisplay);
         auto res = NvDestroyEGLImage(NULL, eglImage);
         if(res)
         {

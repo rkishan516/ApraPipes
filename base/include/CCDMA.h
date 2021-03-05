@@ -12,11 +12,20 @@
 class CCDMAProps : public ModuleProps
 {
 public:
-	CCDMAProps(ImageMetadata::ImageType _imageType)
+	CCDMAProps(ImageMetadata::ImageType _imageType) : top(28) , left(448) , width(1024) , height(1024)
+	{
+		imageType = _imageType;
+	}
+	CCDMAProps(ImageMetadata::ImageType _imageType, int _width, int _height) : top(28) , left(448) , width(_width) , height(_height)
+	{
+		imageType = _imageType;
+	}
+	CCDMAProps(ImageMetadata::ImageType _imageType, int _width, int _height,  int _top , int _left) : top(_top) , left(_left) , width(_width) , height(_height)
 	{
 		imageType = _imageType;
 	}
 	ImageMetadata::ImageType imageType;	
+	int top,left,width,height;
 };
 
 class CCDMA : public Module

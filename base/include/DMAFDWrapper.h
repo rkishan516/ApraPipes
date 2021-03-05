@@ -1,5 +1,7 @@
 #pragma once
 #include "nvbuf_utils.h"
+#include "EGL/egl.h"
+#include "cudaEGL.h"
 
 class DMAFDWrapper
 {
@@ -16,11 +18,16 @@ public:
     EGLImageKHR getEGLImage() const { return eglImage; }
 
     int tempFD;
+    void* hostPtr;
+    uint8_t* cudaPtr;
     int index;
 
 private:
-    DMAFDWrapper(int index);
+    DMAFDWrapper(int index, EGLDisplay EGLDisplay);
 
     int m_fd;
     EGLImageKHR eglImage;
+    CUgraphicsResource  pResource;
+    CUeglFrame eglFrame;
+    EGLDisplay eglDisplay;
 };

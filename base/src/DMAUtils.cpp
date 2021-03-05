@@ -5,6 +5,7 @@ uint8_t* DMAUtils::getCudaPtrForFD(int fd, EGLImageKHR eglImage, CUgraphicsResou
     if (eglImage == NULL)
     {
         LOG_ERROR << "DID not find eglImage for File Descriptor";
+        return nullptr;
     }
     return getCudaPtr(eglImage, pResource, eglFrame, eglDisplay);
 }

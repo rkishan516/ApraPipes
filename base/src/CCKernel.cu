@@ -77,6 +77,24 @@ __global__ void appUYVYToBGR(const Npp8u* src, int nSrcStep, Npp8u* dst_bgr, int
 	}
 }
 
+// __global__ void appRGBAToRGB(const Npp8u* src, int nSrcStep, Npp32f* dst_rgb, int rDstStep, int width, int height)
+// {
+// 	int x = blockIdx.x * blockDim.x + threadIdx.x;
+// 	int y_ = blockIdx.y * blockDim.y + threadIdx.y;
+
+// 	if(x >= width || y_ >= height)
+// 	{
+// 		return;
+// 	}
+
+// 	int dst_offset = (y_ * rDstStep + 3 * x);
+// 	int offset = y_* nSrcStep + 4 * x;
+
+// 	*(dst_rgb+dst_offset) = *(src+offset) / 255.0;
+// 	*(dst_rgb+dst_offset+1) = *(src+offset+1) / 255.0;
+// 	*(dst_rgb+dst_offset+2) = *(src+offset+2) / 255.0;
+// }
+
 __global__ void appRGBAToRGB(const Npp8u* src, int nSrcStep, Npp32f* dst_rgb, int rDstStep, int width, int height)
 {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -87,12 +105,19 @@ __global__ void appRGBAToRGB(const Npp8u* src, int nSrcStep, Npp32f* dst_rgb, in
 		return;
 	}
 
-	int dst_offset = (y_ * rDstStep + 3 * x);
-	int offset = y_* nSrcStep + 4 * x;
+	int dst_offset = (y_ * rDstStep +  ((3 * x) << 2) );
+	int offset = y_* nSrcStep + (x << 4);
 
-	*(dst_rgb+dst_offset) = static_cast<Npp32f>(*(src+offset) / 255.0);
-	*(dst_rgb+dst_offset+1) = static_cast<Npp32f>(*(src+offset+1) / 255.0);
-	*(dst_rgb+dst_offset+2) = static_cast<Npp32f>(*(src+offset+2) / 255.0);
+	#pragma unroll
+	for(auto i = 0; i < 4; i++)
+	{
+		dst_rgb[dst_offset] = src[offset] / 255.0;
+		dst_rgb[dst_offset+1] = src[offset+1] / 255.0;
+		dst_rgb[dst_offset+2] = src[offset+2] / 255.0;
+
+		offset += 4;
+		dst_offset += 3;
+	}
 }
 
 void lanuchAPPYUV411ToYUV444(const Npp8u* src, int nSrcStep, Npp8u* dst[3], int rDstStep, NppiSize oSizeROI, cudaStream_t stream)
@@ -114,8 +139,14 @@ void lanuchAPPUYVYToBGRA(const Npp8u* src,int nSrcStep, Npp8u* dst,int rDstStep,
 	appUYVYToBGR <<<grid, block, 0>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width, oSizeROI.height,true);
 }
 
+// void lanuchAPPRGBAToRGB(const Npp8u* src,int nSrcStep, Npp32f* dst,int rDstStep, NppiSize oSizeROI, cudaStream_t stream){
+// 	dim3 block(32, 32); 
+// 	dim3 grid((oSizeROI.width + block.x - 1) / (1 * block.x), (oSizeROI.height + block.y - 1) / block.y);
+// 	appRGBAToRGB <<<grid, block, 0, stream>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width, oSizeROI.height);
+// }
+
 void lanuchAPPRGBAToRGB(const Npp8u* src,int nSrcStep, Npp32f* dst,int rDstStep, NppiSize oSizeROI, cudaStream_t stream){
 	dim3 block(32, 32); 
-	dim3 grid((oSizeROI.width + block.x - 1) / (1 * block.x), (oSizeROI.height + block.y - 1) / block.y);
+	dim3 grid(((oSizeROI.width >> 2) + block.x - 1) / (1 * block.x), (oSizeROI.height + block.y - 1) / block.y);
 	appRGBAToRGB <<<grid, block, 0, stream>>> (src, nSrcStep, dst, rDstStep, oSizeROI.width, oSizeROI.height);
 }

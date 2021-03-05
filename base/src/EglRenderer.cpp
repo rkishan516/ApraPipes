@@ -28,7 +28,7 @@ public:
             LOG_ERROR << "Failed to create EGL renderer";
             return false;
         }
-        renderer->setFPS(60);
+        renderer->setFPS(30);
 
         return true;
     }

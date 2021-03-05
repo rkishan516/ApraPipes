@@ -20,10 +20,10 @@ class CCDMA::Detail
 public:
 	Detail(CCDMAProps &_props) : props(_props)
 	{
-        dest_rect.top = 28;
-        dest_rect.left = 448;
-        dest_rect.width = 1024;
-        dest_rect.height = 1024;   
+        dest_rect.top = _props.top;
+        dest_rect.left = _props.left;
+        dest_rect.width = _props.width;
+        dest_rect.height = _props.height;   
 		memset(&transParams, 0, sizeof(transParams));
 		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER;
 		transParams.transform_filter = NvBufferTransform_Filter_Smart;
@@ -156,7 +156,6 @@ bool CCDMA::process(frame_container &frames)
 	auto dmaFdWrapper = static_cast<DMAFDWrapper *>(outFrame->data());
 	dmaFdWrapper->tempFD = dmaFdWrapper->getFd();
 
-    // cudaFree(0);
     mDetail->compute(frame,dmaFdWrapper->tempFD);
 
 	frames.insert(make_pair(mDetail->outputPinId, outFrame));

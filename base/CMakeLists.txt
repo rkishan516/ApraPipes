@@ -209,6 +209,7 @@ SET(CUDA_CORE_FILES
 	src/CudaCommon.cpp
 	src/CudaMemCopy.cpp
 	src/CudaStreamSynchronize.cpp
+	src/CuCtxSynchronize.cpp
 )
 
 SET(CUDA_CORE_FILES_H
@@ -217,6 +218,7 @@ SET(CUDA_CORE_FILES_H
 	include/CudaCommon.h	
 	include/apra_cudamallochost_allocator.h
 	include/apra_cudamalloc_allocator.h
+	include/CuCtxSynchronize.h
 )
 
 SET(CUDA_IP_FILES
