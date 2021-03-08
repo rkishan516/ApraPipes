@@ -46,7 +46,7 @@ void nullTest(){
 
 void sgl(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -72,7 +72,7 @@ void sgl(){
 
 void sglr1(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -104,7 +104,7 @@ void sglr1(){
 
 void sglr1r2(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -139,7 +139,7 @@ void sglr1r2(){
 
 void sglcccs(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -178,7 +178,7 @@ void sglcccs(){
 
 void sglccCpucs(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -220,7 +220,7 @@ void sglccCpucs(){
 
 void sglcctrtcs(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -265,7 +265,7 @@ void sglcctrtcs(){
 
 void sglcctrtcmcs(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -316,7 +316,7 @@ void sglcctrtcmcs(){
 
 void sglccCputrtcscmCpu(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -390,7 +390,7 @@ void sglccCputrtcscmCpu(){
 
 void sglccCputrtcscmr1r2(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -460,7 +460,7 @@ void sglccCputrtcscmr1r2(){
 
 void pipelineFunction(){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -522,7 +522,7 @@ void pipelineFunction(){
 void newPipeLine(){
     cudaFree(0);
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.logHealth = true;
 	sourceProps.logHealthFrequency = 100;
@@ -584,59 +584,59 @@ void newPipeLine(){
 }
 
 void fileReaderTest(){
-    // auto width = 1920;
-	// auto height = 1080;
+    auto width = 1024;
+	auto height = 1024;
 
-	// auto fileReader = boost::shared_ptr<FileReaderModule>(new FileReaderModule(FileReaderModuleProps("./rgb.raw")));
-	// auto metadata = framemetadata_sp(new RawImageMetadata(width, height, ImageMetadata::RGB, CV_8UC3, 512, CV_8U, FrameMetadata::HOST));
-	// auto rawImagePin = fileReader->addOutputPin(metadata);
+	auto fileReader = boost::shared_ptr<FileReaderModule>(new FileReaderModule(FileReaderModuleProps("./../test_rgb.raw")));
+	auto metadata = framemetadata_sp(new RawImageMetadata(width, height, ImageMetadata::RGB, CV_8UC3, width*3, CV_8U, FrameMetadata::HOST));
+	auto rawImagePin = fileReader->addOutputPin(metadata);
 
-    // auto stream = cudastream_sp(new ApraCudaStream);
-    // auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
-	// auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	// fileReader->setNext(copy);
+    auto stream = cudastream_sp(new ApraCudaStream);
+    auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
+	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
+	fileReader->setNext(copy);
 
-    // auto testModule = boost::shared_ptr<Module>(new Test(TestProps(stream,true)));
-    // copy->setNext(testModule);
+    auto testModule = boost::shared_ptr<Module>(new Test(TestProps(stream,true)));
+    copy->setNext(testModule);
 
-    // TensorRTProps tensorrtprops("../sample.engine",stream);
-    // tensorrtprops.logHealth = true;
-	// tensorrtprops.logHealthFrequency = 100;
-    // tensorrtprops.qlen = 1;
-    // auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    // testModule->setNext(tensorrt);
+    TensorRTProps tensorrtprops("../sample.engine",stream);
+    tensorrtprops.logHealth = true;
+	tensorrtprops.logHealthFrequency = 100;
+    tensorrtprops.qlen = 1;
+    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
+    testModule->setNext(tensorrt);
 
-    // auto testModule1 = boost::shared_ptr<Module>(new Test(TestProps(stream,false)));
-    // tensorrt->setNext(testModule1);
+    auto testModule1 = boost::shared_ptr<Module>(new Test(TestProps(stream,false)));
+    tensorrt->setNext(testModule1);
 
-    // auto copyProps1 = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
-	// auto copy1 = boost::shared_ptr<Module>(new CudaMemCopy(copyProps1));
-	// testModule1->setNext(copy1);
+    auto copyProps1 = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
+	auto copy1 = boost::shared_ptr<Module>(new CudaMemCopy(copyProps1));
+	testModule1->setNext(copy1);
 
-    // auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps("mono.raw", true)));
-	// copy1->setNext(fileWriter);
+    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps("../test_mono.raw", true)));
+	copy1->setNext(fileWriter);
 
-	// fileReader->init();
-	// copy->init();
-    // testModule->init();
-    // tensorrt->init();
-    // testModule1->init();
-    // copy1->init();
-	// fileWriter->init();
+	fileReader->init();
+	copy->init();
+    testModule->init();
+    tensorrt->init();
+    testModule1->init();
+    copy1->init();
+	fileWriter->init();
 
-	// fileReader->play(true);
+	fileReader->play(true);
 
 
-	// for (auto i = 0; i < 42; i++)
-	// {
-	// 	fileReader->step();
-    //     copy->step();
-    //     testModule->step();
-    //     tensorrt->step();
-    //     testModule1->step();
-    //     copy1->step();
-    //     fileWriter->step();
-	// }
+	for (auto i = 0; i < 1; i++)
+	{
+		fileReader->step();
+        copy->step();
+        testModule->step();
+        tensorrt->step();
+        testModule1->step();
+        copy1->step();
+        fileWriter->step();
+	}
 
 }
 // main pipeline ------------------------------------------------------------------------------------------------------
@@ -667,6 +667,7 @@ int main(int argc, char* argv[])
     // pipelineFunction();
     // LOG_ERROR << "Starting FRHDCMCSR1 Pipeline Test..................";
     // frhdcmcsr1();
+    // fileReaderTest();
     LOG_ERROR << "Starting Full New Pipeline Test..................";
     newPipeLine();
     return 0;

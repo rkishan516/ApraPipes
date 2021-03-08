@@ -46,14 +46,14 @@ public:
 	bool compute(void* buffer, void* dstPtr)
 	{
 		if(props.isDivision){
-			src1 = static_cast<Npp8u*>(buffer);
-        	launchDivision(src1, srcPitch[0], static_cast<Npp32f*>(dstPtr), dstPitch, srcSize[0], props.stream);
+			src1 = static_cast<const Npp8u*>(buffer);
+        	launchDivision(src1, srcPitch[0], static_cast<Npp32f*>(dstPtr), dstPitch >> 2, srcSize[0], props.stream);
 		}else{
 			for(auto i = 0; i < outputChannels; i++)
 			{
-				src[i] = static_cast<Npp32f*>(buffer);
+				src[i] = static_cast<const Npp32f*>(buffer);
 			}
-			launchMul(src[0], srcPitch[0], static_cast<Npp8u*>(dstPtr), dstPitch, srcSize[0], props.stream);
+			launchMul(src[0], srcPitch[0] >> 2, static_cast<Npp8u*>(dstPtr), dstPitch, srcSize[0], props.stream);
 		}
 		return true;
 	}
@@ -65,8 +65,8 @@ private:
 	ImageMetadata::ImageType outputImageType;
 	int inputChannels;
 	int outputChannels;
-    Npp32f* src[4];
-	Npp8u* src1;
+    const Npp32f* src[4];
+	const Npp8u* src1;
 	NppiSize srcSize[4];
 	int srcPitch[4];
 	NppiSize dstSize[4];
@@ -195,9 +195,16 @@ void Test::setMetadata(framemetadata_sp& metadata)
 	auto inputImageType = rawMetadata->getImageType();
 
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mOutputMetadata);
-	RawImageMetadata outputMetadata(width, height, ImageMetadata::RGB, CV_32FC3, 512, CV_32F, FrameMetadata::CUDA_DEVICE, true);		
-	rawOutMetadata->setData(outputMetadata);
-	mDetail->setMetadata(metadata, mOutputMetadata);
+	if(props.isDivision){
+		RawImageMetadata outputMetadata(width, height, ImageMetadata::RGB, CV_32FC3, width*3, CV_32F, FrameMetadata::CUDA_DEVICE, true);	
+		rawOutMetadata->setData(outputMetadata);
+		mDetail->setMetadata(metadata, mOutputMetadata);
+	}
+	else{
+		RawImageMetadata outputMetadata(width, height, ImageMetadata::RGB, CV_8UC3, 512, CV_8U, FrameMetadata::CUDA_DEVICE, true);	
+		rawOutMetadata->setData(outputMetadata);
+		mDetail->setMetadata(metadata, mOutputMetadata);
+	}
 }
 
 bool Test::shouldTriggerSOS()

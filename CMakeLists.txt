@@ -38,6 +38,7 @@ hunter_add_package(Boost COMPONENTS system thread filesystem serialization log c
 find_package(Boost CONFIG REQUIRED system thread filesystem serialization log chrono)
 list(APPEND CMAKE_PREFIX_PATH /usr/lib/aarch64-linux-gnu/tegra)
 list(APPEND CMAKE_PREFIX_PATH /usr/lib/aarch64-linux-gnu/tegra-egl)
+enable_language(CUDA)
 find_library(V4L2LIB v4l2)
 find_library(EGLLIB EGL)
 find_library(GLESv2LIB GLESv2)
@@ -60,11 +61,12 @@ SET(CORE
 	CCDMAHost.cpp
 	CMHostDMA.h
 	CMHostDMA.cpp
-	# TestModule.h
-	# TestModule.cpp
-	# launchDivision.h
-	# launchDivision.cu
+	TestModule.h
+	TestModule.cpp
+	launchDivision.cu
 )
+
+message("CORE -------------  " ${CORE})
 # TARGETS --------------------------------------------------------------------------------------------------------------
 include_directories(AFTER SYSTEM include
     ${BOOST_ROOT}/include
@@ -74,9 +76,9 @@ include_directories(AFTER SYSTEM include
 	${JETSON_MULTIMEDIA_LIB_INCLUDE} 
 )
 
-add_executable(trt_sample trt_sample.cpp )
-
 add_library(trt_samples STATIC ${CORE})
+
+add_executable(trt_sample trt_sample.cpp )
 
 target_include_directories(trt_sample PUBLIC
 	${JETSON_MULTIMEDIA_LIB_INCLUDE} 

@@ -107,7 +107,7 @@ bool TensorRT::validateInputPins()
 		LOG_ERROR << "<" << getId() << ">::validateInputPins input memType is expected to be CUDA_DEVICE. Actual<" << memType << ">";
 		return false;
 	}
-
+ 
 	return true;
 }
 
