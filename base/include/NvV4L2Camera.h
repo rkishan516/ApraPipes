@@ -8,9 +8,9 @@
 class NvV4L2CameraProps : public ModuleProps
 {
 public:
-	NvV4L2CameraProps(uint32_t _width, uint32_t _height) : ModuleProps(), width(_width), height(_height)
+	NvV4L2CameraProps(uint32_t _width, uint32_t _height, uint32_t _maxConcurrentFrames) : ModuleProps(), width(_width), height(_height)
 	{
-		maxConcurrentFrames = 10;
+		maxConcurrentFrames = _maxConcurrentFrames;
 	}
 
 	uint32_t width;
@@ -32,6 +32,7 @@ protected:
 private:
 	uint32_t width;
 	uint32_t height;
+	uint32_t maxConcurrentFrames;
 	framemetadata_sp mOutputMetadata;
 	std::string mOutputPinId;
 	std::shared_ptr<NvV4L2CameraHelper> mHelper;

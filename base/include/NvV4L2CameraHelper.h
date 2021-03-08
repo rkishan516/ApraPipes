@@ -9,8 +9,6 @@
 #include "nvbuf_utils.h"
 #include <map>
 
-#define V4L2_BUFFERS_NUM    10
-
 class NvV4L2CameraHelper
 {
 public:
@@ -19,7 +17,7 @@ public:
     ~NvV4L2CameraHelper();
     static std::shared_ptr<NvV4L2CameraHelper> create(SendFrame sendFrame,std::function<frame_sp()> _makeFrame);
 
-    bool start(uint32_t width, uint32_t height);
+    bool start(uint32_t width, uint32_t height, uint32_t maxConcurrentFrames);
     bool stop();
     void operator()();
     bool queueBufferToCamera();
@@ -35,6 +33,7 @@ private:
     unsigned int camPixFmt;
     unsigned int camWidth;
     unsigned int camHeight;
+    uint32_t maxConcurrentFrames;
 
 
     bool mRunning;

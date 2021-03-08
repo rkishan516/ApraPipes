@@ -199,7 +199,7 @@ bool NvV4L2CameraHelper::request_camera_buff()
     /* Request camera v4l2 buffer */
     struct v4l2_requestbuffers rb;
     memset(&rb, 0, sizeof(rb));
-    rb.count = V4L2_BUFFERS_NUM;
+    rb.count = maxConcurrentFrames;
     rb.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     rb.memory = V4L2_MEMORY_DMABUF;
     if (ioctl(camFD, VIDIOC_REQBUFS, &rb) < 0)
@@ -208,7 +208,7 @@ bool NvV4L2CameraHelper::request_camera_buff()
         return false;
     }
 
-    if (rb.count != V4L2_BUFFERS_NUM)
+    if (rb.count != maxConcurrentFrames)
     {
         LOG_ERROR << "V4l2 buffer number is not as desired";
         return false;
@@ -222,10 +222,11 @@ bool NvV4L2CameraHelper::request_camera_buff()
     return true;
 }
 
-bool NvV4L2CameraHelper::start(uint32_t width, uint32_t height)
+bool NvV4L2CameraHelper::start(uint32_t width, uint32_t height, uint32_t _maxConcurrentFrames)
 {
     camHeight = height;
     camWidth = width;
+    maxConcurrentFrames = _maxConcurrentFrames;
     bool status = false;
     status = camera_initialize();
     if (status == false)

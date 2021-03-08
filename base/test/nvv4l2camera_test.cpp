@@ -10,7 +10,7 @@ BOOST_AUTO_TEST_CASE(basic, *boost::unit_test::disabled())
 {
 	Logger::setLogLevel(boost::log::trivial::severity_level::info);
 
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(NvV4L2CameraProps(640, 480)));
+	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(NvV4L2CameraProps(640, 480, 10)));
 
 	StatSinkProps sinkProps;
 	sinkProps.logHealth = true;

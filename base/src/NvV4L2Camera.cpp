@@ -14,6 +14,7 @@ NvV4L2Camera::NvV4L2Camera(NvV4L2CameraProps props)
 	},[&]() -> frame_sp {return makeFrame(mOutputMetadata->getDataSize(), mOutputPinId);});	
 	height = props.height;
 	width = props.width;
+	maxConcurrentFrames = props.maxConcurrentFrames;
 }
 
 NvV4L2Camera::~NvV4L2Camera() {}
@@ -34,7 +35,7 @@ bool NvV4L2Camera::init()
 	{
 		return false;
 	}
-	mHelper->start(width, height);
+	mHelper->start(width, height,maxConcurrentFrames);
 
 	return true;
 }

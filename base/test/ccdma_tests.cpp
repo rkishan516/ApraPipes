@@ -31,7 +31,7 @@ BOOST_AUTO_TEST_CASE(basic, *boost::unit_test::disabled())
 {
 	Logger::setLogLevel(boost::log::trivial::severity_level::info);
 
-	NvV4L2CameraProps sourceProps(1920, 1080);
+	NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
 
 	auto ccdma = boost::shared_ptr<Module>(new CCDMA(CCDMAProps(ImageMetadata::RGBA)));
