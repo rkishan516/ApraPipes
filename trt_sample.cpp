@@ -32,6 +32,59 @@
 #include "CMHostDMA.h"
 #include "TestModule.h"
 
+typedef struct
+{
+    const char * file;
+    unsigned int save_n_frame;
+} context_t;
+
+static void
+print_usage(void)
+{
+    std::cout << ("\n\tUsage: trt_sample [OPTIONS]\n\n"
+           "\tExample: \n"
+           "\t./trt_sample -e ../sample.engine -n 30\n\n"
+           "\tSupported options:\n"
+           "\t-e\t\tSet TensorRT engine file\n"
+           "\t-n\t\tSave the next n frames after Pressing ctrl+a\n"
+           "\t-h\t\tPrint this usage\n\n"
+           "\tNOTE: It runs infinitely until you terminate it with <ctrl+c>\n");
+}
+
+static bool
+parse_cmdline(context_t * ctx, int argc, char **argv)
+{
+    int c;
+
+    if (argc < 2)
+    {
+        print_usage();
+        exit(EXIT_SUCCESS);
+    }
+
+    while ((c = getopt(argc, argv, "e:n:h")) != -1)
+    {
+        switch (c)
+        {
+            case 'e':
+                ctx->file = optarg;
+                break;
+            case 'n':
+                ctx->save_n_frame = strtol(optarg, NULL, 10);
+                break;
+            case 'h':
+                print_usage();
+                exit(EXIT_SUCCESS);
+                break;
+            default:
+                print_usage();
+                return false;
+        }
+    }
+
+    return true;
+}
+
 
 void nullTest(){
     PipeLine p("test");
@@ -519,7 +572,7 @@ void pipelineFunction(){
 }
 
 
-void newPipeLine(){
+void newPipeLine(context_t *ctx){
     cudaFree(0);
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
     NvV4L2CameraProps sourceProps(1920, 1080, 10);
@@ -544,7 +597,7 @@ void newPipeLine(){
 	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
 	ccdma->setNext(ccdmacu);
 
-    TensorRTProps tensorrtprops("../sample.engine",stream);
+    TensorRTProps tensorrtprops(ctx->file,stream);
     tensorrtprops.logHealth = true;
 	tensorrtprops.logHealthFrequency = 100;
     tensorrtprops.qlen = 1;
@@ -642,33 +695,36 @@ void fileReaderTest(){
 // main pipeline ------------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
-    // TensorRTTest();
-    // LOG_ERROR << "Starting Null Test..................";
-    // nullTest();
-    // LOG_ERROR << "Starting SGL Test..................";
-    // sgl();
-    // LOG_ERROR << "Starting SGLR1 Test..................";
-    // sglr1();
-    // LOG_ERROR << "Starting SGLR1R2 Test..................";
-    // sglr1r2();
-    // LOG_ERROR << "Starting SGLCCCS Test..................";
-    // sglcccs();
-    // LOG_ERROR << "Starting SGLCCCPUCS Test..................";
-    // sglccCpucs();
-    // LOG_ERROR << "Starting SGLCCTRTCS Test..................";
-    // sglcctrtcs();
-    // LOG_ERROR << "Starting SGLCCTRTCMCS Test..................";
-    // sglcctrtcmcs();
-    // LOG_ERROR << "Starting SGLCCCPUTRTCSCMCPU Test..................";
-    // sglccCputrtcscmCpu();
-    // LOG_ERROR << "Starting SGLCCCPUTRTCSCMR1R2 Test..................";
-    // sglccCputrtcscmr1r2();
-    // LOG_ERROR << "Starting Full Pipeline Test..................";
-    // pipelineFunction();
-    // LOG_ERROR << "Starting FRHDCMCSR1 Pipeline Test..................";
-    // frhdcmcsr1();
-    // fileReaderTest();
-    LOG_ERROR << "Starting Full New Pipeline Test..................";
-    newPipeLine();
+    context_t ctx;
+    if(parse_cmdline(&ctx, argc, argv)){
+        // TensorRTTest();
+        // LOG_ERROR << "Starting Null Test..................";
+        // nullTest();
+        // LOG_ERROR << "Starting SGL Test..................";
+        // sgl();
+        // LOG_ERROR << "Starting SGLR1 Test..................";
+        // sglr1();
+        // LOG_ERROR << "Starting SGLR1R2 Test..................";
+        // sglr1r2();
+        // LOG_ERROR << "Starting SGLCCCS Test..................";
+        // sglcccs();
+        // LOG_ERROR << "Starting SGLCCCPUCS Test..................";
+        // sglccCpucs();
+        // LOG_ERROR << "Starting SGLCCTRTCS Test..................";
+        // sglcctrtcs();
+        // LOG_ERROR << "Starting SGLCCTRTCMCS Test..................";
+        // sglcctrtcmcs();
+        // LOG_ERROR << "Starting SGLCCCPUTRTCSCMCPU Test..................";
+        // sglccCputrtcscmCpu();
+        // LOG_ERROR << "Starting SGLCCCPUTRTCSCMR1R2 Test..................";
+        // sglccCputrtcscmr1r2();
+        // LOG_ERROR << "Starting Full Pipeline Test..................";
+        // pipelineFunction();
+        // LOG_ERROR << "Starting FRHDCMCSR1 Pipeline Test..................";
+        // frhdcmcsr1();
+        // fileReaderTest();
+        LOG_ERROR << "Starting Full New Pipeline Test..................";
+        newPipeLine(&ctx);
+    }
     return 0;
 }
