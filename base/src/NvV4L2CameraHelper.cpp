@@ -141,7 +141,14 @@ void NvV4L2CameraHelper::operator()()
                 LOG_ERROR << "Failed to dequeue camera buff";
                 break;
             }
-            auto frameItr = bufferFD.find(v4l2_buf.m.fd);            
+
+            // lock
+            std::lock_guard<std::mutex> lock(bufferFDMutex);
+            auto frameItr = bufferFD.find(v4l2_buf.m.fd);  
+            if(frameItr == bufferFD.end())          
+            {
+                LOG_FATAL << " bufferFD failed. fd<" << v4l2_buf.m.fd << "> size<" << bufferFD.size() << ">";
+            }
             mSendFrame(frameItr->second);
             bufferFD.erase(frameItr);
         }
@@ -172,7 +179,11 @@ bool NvV4L2CameraHelper::queueBufferToCamera()
         }
         buf.m.fd = (unsigned long)dmaFDWrapper->tempFD;
 
-        bufferFD.insert(make_pair(buf.m.fd, frame));
+        {
+            //lock
+            std::lock_guard<std::mutex> lock(bufferFDMutex);
+            bufferFD.insert(make_pair(buf.m.fd, frame));
+        }
         
         if (ioctl(camFD, VIDIOC_QBUF, &buf) < 0){
             LOG_ERROR << "Failed to enqueue buffers";

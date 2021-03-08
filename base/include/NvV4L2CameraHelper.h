@@ -8,6 +8,7 @@
 #include "NvUtils.h"
 #include "nvbuf_utils.h"
 #include <map>
+#include <mutex>
 
 class NvV4L2CameraHelper
 {
@@ -24,6 +25,7 @@ public:
 private:
     void setSelf(std::shared_ptr<NvV4L2CameraHelper> &mother);
     std::thread mThread;
+    std::mutex bufferFDMutex;
 
     std::function<frame_sp()> makeFrame; 
 
