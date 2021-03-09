@@ -95,7 +95,7 @@ private:
 	CCCuDMAProps props;
 };
 
-CCCuDMA::CCCuDMA(CCCuDMAProps _props) : Module(TRANSFORM, "CCCuDMA", _props), props(_props), mFrameChecker(0), mNoChange(false)
+CCCuDMA::CCCuDMA(CCCuDMAProps _props) : Module(TRANSFORM, "CCCuDMA", _props), props(_props), mFrameChecker(0)
 {
 	mDetail.reset(new Detail(_props));	
 }
@@ -104,12 +104,6 @@ CCCuDMA::~CCCuDMA() {}
 
 bool CCCuDMA::validateInputPins()
 {
-	// if (getNumberOfInputPins() != 1)
-	// {
-	// 	LOG_ERROR << "<" << getId() << ">::validateInputPins size is expected to be 2. Actual<" << getNumberOfInputPins() << ">";
-	// 	return false;
-	// }
-
 	framemetadata_sp metadata = getFirstInputMetadata();
 	FrameMetadata::FrameType frameType = metadata->getFrameType();
 	if (frameType != FrameMetadata::RAW_IMAGE)
@@ -137,7 +131,7 @@ bool CCCuDMA::validateOutputPins()
 	}
 
 	framemetadata_sp metadata = getFirstOutputMetadata();
-	mOutputFrameType = metadata->getFrameType();
+	auto mOutputFrameType = metadata->getFrameType();
 	if (mOutputFrameType != FrameMetadata::RAW_IMAGE)
 	{
 		LOG_ERROR << "<" << getId() << ">::validateOutputPins input frameType is expected to be RAW_IMAGE. Actual<" << mOutputFrameType << ">";
@@ -229,8 +223,6 @@ bool CCCuDMA::processSOS(frame_sp &frame)
 
 void CCCuDMA::setMetadata(framemetadata_sp& metadata)
 {
-	mInputFrameType = metadata->getFrameType();
-
 	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
 	auto width = rawMetadata->getWidth();
 	auto height = rawMetadata->getHeight();

@@ -61,10 +61,6 @@ public:
 
     EGLDisplay eglDisplay;
 private:
-	EGLImageKHR eglInImage;
-    CUgraphicsResource pInResource;
-    CUeglFrame eglInFrame;
-
 	size_t srcStep;
 	size_t dstStep;
 	NppiSize resolution;
@@ -72,7 +68,7 @@ private:
 	CCDMACuProps props;
 };
 
-CCDMACu::CCDMACu(CCDMACuProps _props) : Module(TRANSFORM, "CCDMACu", _props), props(_props), mFrameLength(0), mNoChange(false)
+CCDMACu::CCDMACu(CCDMACuProps _props) : Module(TRANSFORM, "CCDMACu", _props), props(_props), mFrameLength(0)
 {
 	mDetail.reset(new Detail(_props));	
 }
@@ -114,7 +110,7 @@ bool CCDMACu::validateOutputPins()
 	}
 
 	framemetadata_sp metadata = getFirstOutputMetadata();
-	mOutputFrameType = metadata->getFrameType();
+	auto mOutputFrameType = metadata->getFrameType();
 	if (mOutputFrameType != FrameMetadata::RAW_IMAGE)
 	{
 		LOG_ERROR << "<" << getId() << ">::validateOutputPins input frameType is expected to be RAW_IMAGE. Actual<" << mOutputFrameType << ">";
@@ -186,8 +182,6 @@ bool CCDMACu::processSOS(frame_sp &frame)
 
 void CCDMACu::setMetadata(framemetadata_sp& metadata)
 {
-	mInputFrameType = metadata->getFrameType();
-
 	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
 	auto width = rawMetadata->getWidth();
 	auto height = rawMetadata->getHeight();

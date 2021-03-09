@@ -45,9 +45,6 @@ private:
 	class Detail;
 	boost::shared_ptr<Detail> mDetail;
 
-	bool mNoChange;
-	int mInputFrameType;
-	int mOutputFrameType;
 	size_t mFrameLength;
 	framemetadata_sp mOutputMetadata;
 	std::string mOutputPinId;
