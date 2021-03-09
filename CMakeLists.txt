@@ -64,6 +64,7 @@ SET(CORE
 	TestModule.h
 	TestModule.cpp
 	launchDivision.cu
+	GLTransform.cpp
 )
 
 message("CORE -------------  " ${CORE})

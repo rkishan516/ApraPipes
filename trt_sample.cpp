@@ -31,6 +31,8 @@
 #include "CCDMAHost.h"
 #include "CMHostDMA.h"
 #include "TestModule.h"
+#include "GLTransform.h"
+#include "CuCtxSynchronize.h"
 
 typedef struct
 {
@@ -46,7 +48,7 @@ print_usage(void)
            "\t./trt_sample -e ../sample.engine -n 30\n\n"
            "\tSupported options:\n"
            "\t-e\t\tSet TensorRT engine file\n"
-           "\t-n\t\tSave the next n frames after Pressing ctrl+a\n"
+           "\t-n\t\tSave the next n frames after Pressing s\n"
            "\t-h\t\tPrint this usage\n\n"
            "\tNOTE: It runs infinitely until you terminate it with <ctrl+c>\n");
 }
@@ -577,29 +579,21 @@ void newPipeLine(context_t *ctx){
     Logger::setLogLevel(boost::log::trivial::severity_level::info);
     NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
     sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
 	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
 
     CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
     ccdmaprops.qlen = 1;
 	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
 	source->setNext(ccdma);
     
     auto stream = cudastream_sp(new ApraCudaStream);
     CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.logHealth = true;
-	ccdmacuprops.logHealthFrequency = 100;
     ccdmacuprops.qlen = 1;
 	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
 	ccdma->setNext(ccdmacu);
 
     TensorRTProps tensorrtprops(ctx->file,stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
     tensorrtprops.qlen = 1;
     auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
     ccdmacu->setNext(tensorrt);
@@ -612,18 +606,26 @@ void newPipeLine(context_t *ctx){
     ccdma->setNext(muxer);
 
     CCCuDMAProps cccudmaprops(ImageMetadata::RGBA, stream);
-    cccudmaprops.logHealth = true;
-	cccudmaprops.logHealthFrequency = 100;
     cccudmaprops.qlen = 1;
     auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
 	muxer->setNext(cccudma);
 
-    EglRendererProps eglProps(0, 0,540, 1080);
+    CuCtxSynchronizeProps cuCtxSyncProps;
+    cuCtxSyncProps.qlen = 1;
+    auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
+	cccudma->setNext(cuctx);
+
+    GLTransformProps gltransformProps(ImageMetadata::RGBA, 512, 1024, 0 ,0);
+    gltransformProps.qlen = 1;
+    auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
+	cuctx->setNext(gltransform);
+
+    EglRendererProps eglProps(0, 0,512, 1024);
     eglProps.logHealth = true;
 	eglProps.logHealthFrequency = 100;
     eglProps.qlen = 1;
 	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	cccudma->setNext(sink);
+	gltransform->setNext(sink);
 
     PipeLine p("test");
 	p.appendModule(source);
