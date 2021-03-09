@@ -33,6 +33,8 @@
 #include "TestModule.h"
 #include "GLTransform.h"
 #include "CuCtxSynchronize.h"
+#include "KeyStrokeModule.h"
+#include "CCSaver.h"
 
 typedef struct
 {
@@ -63,7 +65,7 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
         print_usage();
         exit(EXIT_SUCCESS);
     }
-
+    ctx->save_n_frame = 0;
     while ((c = getopt(argc, argv, "e:n:h")) != -1)
     {
         switch (c)
@@ -638,6 +640,98 @@ void newPipeLine(context_t *ctx){
 	p.wait_for_all();
 }
 
+void keyStrokePipeLine(context_t *ctx){
+    cudaFree(0);
+
+    /* Common Pipe */
+    Logger::setLogLevel(boost::log::trivial::severity_level::info);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10);
+	sourceProps.fps = 60;
+    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
+	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
+
+    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
+    ccdmaprops.qlen = 1;
+	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
+	source->setNext(ccdma);
+
+    auto stream = cudastream_sp(new ApraCudaStream);
+
+    /* KeyStroke Pipe */
+    KeyStrokeModuleProps keystrokeProps(ctx->save_n_frame);
+    keystrokeProps.qlen = 1;
+    auto keystroke = boost::shared_ptr<Module>(new KeyStrokeModule(keystrokeProps));
+    ccdma->setNext(keystroke);
+
+    CCSaverProps ccsaverprops(ImageMetadata::RGB, stream);
+    ccsaverprops.qlen = 1;
+    auto ccsaver = boost::shared_ptr<Module>(new CCSaver(ccsaverprops));
+    keystroke->setNext(ccsaver);
+
+    auto copyProps = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
+	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
+	ccsaver->setNext(copy);
+
+    CuCtxSynchronizeProps cuCtxSyncProps0;
+    cuCtxSyncProps0.qlen = 1;
+    auto cuctx0 = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps0));
+	copy->setNext(cuctx0);
+
+    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps("../data/???.raw", true)));
+	cuctx0->setNext(fileWriter);
+
+    
+    /* Renderer Pipe */
+    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
+    ccdmacuprops.qlen = 1;
+	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
+	ccdma->setNext(ccdmacu);
+
+    TensorRTProps tensorrtprops(ctx->file,stream);
+    tensorrtprops.qlen = 1;
+    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
+    ccdmacu->setNext(tensorrt);
+
+    FramesMuxerProps muxerProps;
+    muxerProps.maxDelay = 200;
+    muxerProps.qlen = 1;
+    auto muxer = boost::shared_ptr<Module>(new FramesMuxer());
+    tensorrt->setNext(muxer);
+    ccdma->setNext(muxer);
+
+    CCCuDMAProps cccudmaprops(ImageMetadata::RGBA, stream);
+    cccudmaprops.qlen = 1;
+    auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
+	muxer->setNext(cccudma);
+
+    CuCtxSynchronizeProps cuCtxSyncProps;
+    cuCtxSyncProps.qlen = 1;
+    auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
+	cccudma->setNext(cuctx);
+
+    GLTransformProps gltransformProps(ImageMetadata::RGBA, 512, 1024, 0 ,0);
+    gltransformProps.qlen = 1;
+    auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
+	cuctx->setNext(gltransform);
+
+    EglRendererProps eglProps(0, 0,512, 1024);
+    eglProps.logHealth = true;
+	eglProps.logHealthFrequency = 100;
+    eglProps.qlen = 1;
+	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
+	gltransform->setNext(sink);
+
+    PipeLine p("test");
+	p.appendModule(source);
+	p.init();
+
+	p.run_all_threaded();
+	boost::this_thread::sleep_for(boost::chrono::seconds(259200));
+	p.stop();
+	p.term();
+	p.wait_for_all();
+}
+
 void fileReaderTest(){
     auto width = 1024;
 	auto height = 1024;
@@ -725,8 +819,10 @@ int main(int argc, char* argv[])
         // LOG_ERROR << "Starting FRHDCMCSR1 Pipeline Test..................";
         // frhdcmcsr1();
         // fileReaderTest();
-        LOG_ERROR << "Starting Full New Pipeline Test..................";
-        newPipeLine(&ctx);
+        // LOG_ERROR << "Starting Full New Pipeline Test..................";
+        // newPipeLine(&ctx);
+        LOG_ERROR << "Starting Full New KeyStroke Pipeline Test..................";
+        keyStrokePipeLine(&ctx);
     }
     return 0;
 }

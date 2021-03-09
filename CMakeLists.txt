@@ -38,6 +38,7 @@ hunter_add_package(Boost COMPONENTS system thread filesystem serialization log c
 find_package(Boost CONFIG REQUIRED system thread filesystem serialization log chrono)
 list(APPEND CMAKE_PREFIX_PATH /usr/lib/aarch64-linux-gnu/tegra)
 list(APPEND CMAKE_PREFIX_PATH /usr/lib/aarch64-linux-gnu/tegra-egl)
+find_package(Curses REQUIRED)
 enable_language(CUDA)
 find_library(V4L2LIB v4l2)
 find_library(EGLLIB EGL)
@@ -65,6 +66,10 @@ SET(CORE
 	TestModule.cpp
 	launchDivision.cu
 	GLTransform.cpp
+	KeyStrokeModule.h
+	KeyStrokeModule.cpp
+	CCSaver.h
+	CCSaver.cpp
 )
 
 message("CORE -------------  " ${CORE})
@@ -75,6 +80,7 @@ include_directories(AFTER SYSTEM include
   	/usr/local/cuda-10.2/include
     /mnt/disks/ssd/kishan/ApraPipes/base/include
 	${JETSON_MULTIMEDIA_LIB_INCLUDE} 
+	${CURSES_INCLUDE_DIR}
 )
 
 add_library(trt_samples STATIC ${CORE})
@@ -102,4 +108,5 @@ target_link_libraries(trt_sample PUBLIC
 	${CUDA_LIBRARIES}
 	${CMAKE_THREAD_LIBS_INIT}
 	${TensorRT_LIBRARIES}
+	${CURSES_LIBRARIES}
 )
