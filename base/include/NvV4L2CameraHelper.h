@@ -3,9 +3,7 @@
 // #Mar10_Feedback - cleanup headers - keep only what is required - pool is not required - extframe ? - queue ?
 #include <memory>
 #include <thread>
-#include <queue>
 #include "ExtFrame.h"
-#include <boost/pool/object_pool.hpp>
 #include "NvUtils.h"
 #include "nvbuf_utils.h"
 #include <map>
@@ -27,33 +25,25 @@ public:
     bool queueBufferToCamera();
 
 private:
-    // #Mar10_Feedback - we are not using this - so you can remove this 
-    void setSelf(std::shared_ptr<NvV4L2CameraHelper> &mother);
     std::thread mThread;
-    // #Mar10_Feedback - consistency in variable names - use m before every variable - m means member - mBufferFDMutex
-    std::mutex bufferFDMutex;
+    std::mutex mBufferFDMutex;
+    std::function<frame_sp()> mMakeFrame; 
 
-    // #Mar10_Feedback - consistency in variable names - use m before every variable 
-    std::function<frame_sp()> makeFrame; 
-
-    // #Mar10_Feedback - consistency in variable names - use m before every variable 
     /* Camera v4l2 context */
-    const char * camDevname;
-    int camFD;
-    unsigned int camPixFmt;
-    unsigned int camWidth;
-    unsigned int camHeight;
-    uint32_t maxConcurrentFrames;
+    const char * mCamDevname;
+    int mCamFD;
+    unsigned int mCamPixFmt;
+    unsigned int mCamWidth;
+    unsigned int mCamHeight;
+    uint32_t mMaxConcurrentFrames;
 
     bool mRunning;
     SendFrame mSendFrame;
-    // #Mar10_Feedback - consistency in variable names - use m before every variable 
-    std::map<int, frame_sp> bufferFD;
+    std::map<int, frame_sp> mBufferFD;
 
-    // #Mar10_Feedback - consistency in function names - camelcase - other functions are camelcase 
-    bool camera_initialize();
-    bool prepare_buffers();    
-    bool start_stream();
-    bool request_camera_buff();
-    bool stop_stream();             
+    bool cameraInitialize();
+    bool prepareBuffers();    
+    bool startStream();
+    bool requestCameraBuff();
+    bool stopStream();             
 };

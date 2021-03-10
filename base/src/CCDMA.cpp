@@ -20,14 +20,15 @@ class CCDMA::Detail
 public:
 	Detail(CCDMAProps &_props) : props(_props)
 	{
-        dest_rect.top = _props.top;
-        dest_rect.left = _props.left;
-        dest_rect.width = _props.width;
-        dest_rect.height = _props.height;   
+        src_rect.top = _props.top;
+        src_rect.left = _props.left;
+        src_rect.width = _props.width;
+        src_rect.height = _props.height;
+
 		memset(&transParams, 0, sizeof(transParams));
-		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER;
+		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER | NVBUFFER_TRANSFORM_CROP_SRC;
 		transParams.transform_filter = NvBufferTransform_Filter_Smart;
-		transParams.dst_rect = dest_rect;
+		transParams.src_rect = src_rect;
 	}
 
 	~Detail()
@@ -44,7 +45,7 @@ public:
 	}
 
 public:
-	NvBufferRect dest_rect;
+	NvBufferRect src_rect;
 	framemetadata_sp outputMetadata;
 	std::string outputPinId;
 	CCDMAProps props;
