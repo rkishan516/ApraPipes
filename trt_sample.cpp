@@ -42,6 +42,7 @@ typedef struct
     const char* outputDirectory;
     unsigned int save_n_frame;
     bool enable_display;
+    bool enable_log;
 } context_t;
 
 static void
@@ -68,6 +69,7 @@ set_defaults(context_t * ctx)
     ctx->outputDirectory = "./out/";
     ctx->save_n_frame = 1;
     ctx->enable_display = true;
+    ctx->enable_log = false;
 }
 
 static bool
@@ -81,7 +83,7 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
     ctx->save_n_frame = 0;
-    while ((c = getopt(argc, argv, "e:n:o:dh")) != -1)
+    while ((c = getopt(argc, argv, "e:n:o:ldh")) != -1)
     {
         switch (c)
         {
@@ -96,6 +98,9 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
                 break;
             case 'o':
                 ctx->outputDirectory = optarg;
+                break;
+            case 'l':
+                ctx->enable_log = true;
                 break;
             case 'h':
                 print_usage();
@@ -179,7 +184,11 @@ void keyStrokePipeLine(context_t *ctx){
     cudaFree(0);
 
     /* Common Pipe */
-    Logger::setLogLevel(boost::log::trivial::severity_level::error);
+    if(ctx->enable_log){
+        Logger::setLogLevel(boost::log::trivial::severity_level::info);
+    }else{
+        Logger::setLogLevel(boost::log::trivial::severity_level::error);
+    }
     NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
@@ -188,7 +197,7 @@ void keyStrokePipeLine(context_t *ctx){
     CCDMAProps ccdmaprops(ImageMetadata::RGBA);
     ccdmaprops.qlen = 1;
     ccdmaprops.skipN = 1;
-    ccdmaprops.skipD = 10;
+    ccdmaprops.skipD = 30;
 	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
 	source->setNext(ccdma);
 
