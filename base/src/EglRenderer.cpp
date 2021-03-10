@@ -20,7 +20,7 @@ public:
     bool init(int _height, int _width){
         uint32_t displayHeight, displayWidth;
         NvEglRenderer::getDisplayResolution(displayWidth,displayHeight);
-        if(height && width){
+        if(height!=0 && width!=0){
             x_offset += (displayWidth-width)/2;
             y_offset += (displayHeight-height)/2;
             renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);

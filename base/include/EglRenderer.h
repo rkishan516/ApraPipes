@@ -16,6 +16,8 @@ public:
 	{
         x_offset = _x_offset;
         y_offset = _y_offset;
+		height = 0;
+		width = 0;
 	}
     int x_offset;
     int y_offset;
