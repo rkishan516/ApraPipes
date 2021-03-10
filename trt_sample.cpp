@@ -66,7 +66,7 @@ set_defaults(context_t * ctx)
 
     ctx->file = "../sample.engine";
     ctx->outputDirectory = "./out/";
-    ctx->save_n_frame = 0;
+    ctx->save_n_frame = 1;
     ctx->enable_display = true;
 }
 
@@ -152,7 +152,7 @@ void newPipeLine(context_t *ctx){
     auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
 	cccudma->setNext(cuctx);
 
-    GLTransformProps gltransformProps(ImageMetadata::RGBA, 512, 1024, 0 ,0);
+    GLTransformProps gltransformProps;
     gltransformProps.qlen = 1;
     auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
 	cuctx->setNext(gltransform);
@@ -238,7 +238,7 @@ void keyStrokePipeLine(context_t *ctx){
     auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
 	cccudma->setNext(cuctx);
 
-    GLTransformProps gltransformProps(ImageMetadata::RGBA, 1024, 512, 0 ,0);
+    GLTransformProps gltransformProps;
     gltransformProps.qlen = 1;
     if(!ctx->enable_display){
         gltransformProps.logHealth = true;
@@ -247,7 +247,7 @@ void keyStrokePipeLine(context_t *ctx){
     auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
 	cuctx->setNext(gltransform);
     if(ctx->enable_display){
-        EglRendererProps eglProps(0, 0, 1024, 512);
+        EglRendererProps eglProps(0, 0);
         eglProps.logHealth = true;
         eglProps.logHealthFrequency = 100;
         eglProps.qlen = 1;

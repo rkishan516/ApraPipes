@@ -12,12 +12,9 @@
 class GLTransformProps : public ModuleProps
 {
 public:
-	GLTransformProps(ImageMetadata::ImageType _imageType, int _width, int _height,  int _top , int _left) : top(_top) , left(_left) , width(_width) , height(_height)
+	GLTransformProps()
 	{
-		imageType = _imageType;
 	}
-	ImageMetadata::ImageType imageType;	
-	int top,left,width,height;
 };
 
 class GLTransform : public Module

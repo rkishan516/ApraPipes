@@ -11,6 +11,7 @@
 #include "DMAFDWrapper.h"
 #include "DMABuffer.h"
 #include <Argus/Argus.h>
+#include "NvEglRenderer.h"
 #include <deque>
 
 #include "npp.h"
@@ -18,21 +19,26 @@
 class GLTransform::Detail
 {
 public:
-	Detail(GLTransformProps &_props) : props(_props)
+	Detail()
 	{
-        dest_rect.top = _props.top;
-        dest_rect.left = _props.left;
-        dest_rect.width = _props.width;
-        dest_rect.height = _props.height;   
-		memset(&transParams, 0, sizeof(transParams));
-		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER;
-		transParams.transform_filter = NvBufferTransform_Filter_Smart;
-		transParams.dst_rect = dest_rect;
+        NvEglRenderer::getDisplayResolution(displayWidth,displayHeight);
 	}
 
 	~Detail()
 	{
 
+	}
+
+	bool setTransparams(framemetadata_sp inputMetadata){
+		auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(inputMetadata);
+		dest_rect.height = displayWidth*(rawOutMetadata->getHeight())/rawOutMetadata->getWidth();
+		dest_rect.top = (displayHeight-(dest_rect.height))/2;
+        dest_rect.left = 0;
+        dest_rect.width = displayWidth;
+		memset(&transParams, 0, sizeof(transParams));
+		transParams.transform_flag = NVBUFFER_TRANSFORM_FILTER | NVBUFFER_TRANSFORM_CROP_DST;
+		transParams.transform_filter = NvBufferTransform_Filter_Smart;
+		transParams.dst_rect = dest_rect;
 	}
 
 	bool compute(frame_sp& frame, int outFD)
@@ -47,7 +53,7 @@ public:
 	NvBufferRect dest_rect;
 	framemetadata_sp outputMetadata;
 	std::string outputPinId;
-	GLTransformProps props;
+	uint32_t displayHeight, displayWidth;
 
 private:	
 	NvBufferTransformParams transParams;
@@ -55,7 +61,7 @@ private:
 
 GLTransform::GLTransform(GLTransformProps props) : Module(TRANSFORM, "GLTransform", props)
 {
-	mDetail.reset(new Detail(props));	
+	mDetail.reset(new Detail());	
 }
 
 GLTransform::~GLTransform() {}
@@ -115,14 +121,7 @@ void GLTransform::addInputPin(framemetadata_sp& metadata, string& pinId)
 {
 	Module::addInputPin(metadata, pinId);
 	auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
-	switch (mDetail->props.imageType)
-	{
-		case ImageMetadata::RGBA:
-			mDetail->outputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
-			break;
-		default:
-			throw AIPException(AIP_FATAL, "Unsupported Image Type<" + std::to_string(inputRawMetadata->getImageType()) + ">");
-	}
+	mDetail->outputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
 
 	mDetail->outputMetadata->copyHint(*metadata.get());
 	mDetail->outputPinId = addOutputPin(mDetail->outputMetadata);	
@@ -181,15 +180,10 @@ void GLTransform::setMetadata(framemetadata_sp& metadata)
 	auto depth = rawMetadata->getDepth();
 	auto inputImageType = rawMetadata->getImageType();
 
-	
-	if (!(mDetail->props.imageType == ImageMetadata::RGBA && inputImageType == ImageMetadata::RGBA))
-	{
-		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");
-	}
-	
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mDetail->outputMetadata);
-	RawImageMetadata outputMetadata(mDetail->props.width, mDetail->props.height, mDetail->props.imageType, CV_8UC4, mDetail->props.width*4 , CV_8U, FrameMetadata::DMABUF, true);		
+	RawImageMetadata outputMetadata(mDetail->displayWidth, mDetail->displayHeight, inputImageType, CV_8UC4, mDetail->displayWidth*4 , CV_8U, FrameMetadata::DMABUF, true);		
 	rawOutMetadata->setData(outputMetadata);
+	mDetail->setTransparams(metadata);
 }
 
 bool GLTransform::processEOS(string& pinId)
