@@ -34,6 +34,7 @@ public:
             LOG_ERROR << "Failed to create EGL renderer";
             return false;
         }
+        // #Mar10_Feedback - is it required ? can you remove it ?
         renderer->setFPS(30);
 
         return true;
@@ -45,6 +46,7 @@ public:
 	}
 
 	NvEglRenderer *renderer = nullptr;
+    // #Mar10_Feedback - change to uint32_t
     int x_offset,y_offset,width,height;
 };
 
