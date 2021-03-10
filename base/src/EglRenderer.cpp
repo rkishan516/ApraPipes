@@ -17,10 +17,11 @@ public:
         }
     }
 
-    bool init(int _height, int _width){
+    bool init(int _height, int _width) {
         if(height && width){
             renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);
         }else{
+            // #Mar10_Feedback  cast _width _height to uint32_t
             renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, _width, _height, x_offset, y_offset);
         }
         if (!renderer)
@@ -28,6 +29,7 @@ public:
             LOG_ERROR << "Failed to create EGL renderer";
             return false;
         }
+        // #Mar10_Feedback - is it required ? can you remove it ?
         renderer->setFPS(30);
 
         return true;
@@ -39,11 +41,13 @@ public:
 	}
 
 	NvEglRenderer *renderer = nullptr;
+    // #Mar10_Feedback - change to uint32_t
     int x_offset,y_offset,width,height;
 };
 
 EglRenderer::EglRenderer(EglRendererProps props) : Module(SINK, "EglRenderer", props)
 {
+    // #Mar10_Feedback - send props, why are you sending individual
     mDetail.reset(new Detail(props.x_offset,props.y_offset, props.height, props.width));
 }
 
