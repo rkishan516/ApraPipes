@@ -188,6 +188,7 @@ void CCDMA::setMetadata(framemetadata_sp& metadata)
 	}
 	
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mDetail->outputMetadata);
+	//TODO: update height and width
 	RawImageMetadata outputMetadata(1024, 1024, mDetail->props.imageType, CV_8UC4, 512, depth, FrameMetadata::DMABUF, true);		
 	rawOutMetadata->setData(outputMetadata);
 }

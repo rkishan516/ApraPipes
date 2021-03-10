@@ -1,6 +1,7 @@
 #include <boost/foreach.hpp>
 
 #include "CuCtxSynchronize.h"
+#include "cuda_runtime.h"
 #include "Frame.h"
 #include "FrameMetadata.h"
 #include "Logger.h"
@@ -40,7 +41,6 @@ bool CuCtxSynchronize::init()
 		return false;
 	}
 
-
 	return true;
 }
 
@@ -57,6 +57,8 @@ void CuCtxSynchronize::addInputPin(framemetadata_sp& metadata, string& pinId)
 
 bool CuCtxSynchronize::process(frame_container& frames)
 {
+	//TODO: add this to processSOS
+	cudaFree(0);
 	auto cudaStatus = cuCtxSynchronize();
 	if (cudaStatus != CUDA_SUCCESS)
 	{

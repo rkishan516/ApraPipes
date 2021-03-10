@@ -5,7 +5,7 @@
 class EglRendererProps : public ModuleProps
 {
 public:
-	EglRendererProps(int _x_offset,int _y_offset, int _height, int _width) : ModuleProps()
+	EglRendererProps(int _x_offset,int _y_offset, int _width, int _height) : ModuleProps()
 	{
         x_offset = _x_offset;
         y_offset = _y_offset;

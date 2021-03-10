@@ -7,7 +7,7 @@ class EglRenderer::Detail
 {
 
 public:
-	Detail(int _x_offset, int _y_offset, int _height, int _width): x_offset(_x_offset), y_offset(_y_offset), width(_width), height(_height) {}
+	Detail(int _x_offset, int _y_offset, int _width, int _height): x_offset(_x_offset), y_offset(_y_offset), width(_width), height(_height) {}
 
 	~Detail() 
     {
@@ -18,9 +18,15 @@ public:
     }
 
     bool init(int _height, int _width){
+        uint32_t displayHeight, displayWidth;
+        NvEglRenderer::getDisplayResolution(displayWidth,displayHeight);
         if(height && width){
+            x_offset += (displayWidth-width)/2;
+            y_offset += (displayHeight-height)/2;
             renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, width, height, x_offset, y_offset);
         }else{
+            x_offset += (displayWidth-_width)/2;
+            y_offset += (displayHeight-_height)/2;
             renderer = NvEglRenderer::createEglRenderer(__TIMESTAMP__, _width, _height, x_offset, y_offset);
         }
         if (!renderer)
@@ -44,7 +50,7 @@ public:
 
 EglRenderer::EglRenderer(EglRendererProps props) : Module(SINK, "EglRenderer", props)
 {
-    mDetail.reset(new Detail(props.x_offset,props.y_offset, props.height, props.width));
+    mDetail.reset(new Detail(props.x_offset,props.y_offset, props.width, props.height));
 }
 
 EglRenderer::~EglRenderer() {}
