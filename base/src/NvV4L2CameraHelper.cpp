@@ -1,5 +1,5 @@
-#include "DMAFDWrapper.h"
 #include "NvV4L2CameraHelper.h"
+#include "DMAFDWrapper.h"
 #include "NvEglRenderer.h"
 #include "NvUtils.h"
 #include "nvbuf_utils.h"
@@ -7,6 +7,7 @@
 
 NvV4L2CameraHelper::NvV4L2CameraHelper()
 {
+    // hardcoded device name and pixfmt which is fine for now 
     camDevname = "/dev/video0";
     camFD = -1;
     camPixFmt = V4L2_PIX_FMT_UYVY;
@@ -16,18 +17,21 @@ NvV4L2CameraHelper::NvV4L2CameraHelper()
 
 NvV4L2CameraHelper::~NvV4L2CameraHelper()
 {
+    // #Mar10_Feedback - keep logs only if they are relevant
     LOG_INFO << "in destructor ------------------";
 
     if (camFD > 0){
         close(camFD);
     }
 
+    // #Mar10_Feedback -  keep logs only if they are relevant
     LOG_INFO << "out of destructor ------------------";
 }
 
 std::shared_ptr<NvV4L2CameraHelper> NvV4L2CameraHelper::create(SendFrame sendFrame,std::function<frame_sp()> _makeFrame)
 {
     auto instance = std::make_shared<NvV4L2CameraHelper>();
+    // #Mar10_Feedback - you can pass the two variables as arguments to constructor and remove the static create method
     instance->mSendFrame = sendFrame;
     instance->makeFrame = _makeFrame;
 
@@ -72,7 +76,7 @@ bool NvV4L2CameraHelper::camera_initialize()
         fmt.fmt.pix.height != camHeight ||
         fmt.fmt.pix.pixelformat != camPixFmt)
     {
-        LOG_WARNING << "The desired format is not supported";
+        LOG_ERROR << "The desired format is not supported";
         LOG_ERROR << "Supported width is : " << fmt.fmt.pix.width;
         LOG_ERROR << "Supported height is : " << fmt.fmt.pix.height;
         LOG_ERROR << "Supported pixelformat is : " << fmt.fmt.pix.pixelformat;
@@ -85,10 +89,8 @@ bool NvV4L2CameraHelper::camera_initialize()
 
 bool NvV4L2CameraHelper::start_stream()
 {
-    enum v4l2_buf_type type;
-
     /* Start v4l2 streaming */
-    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    auto type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if (ioctl(camFD, VIDIOC_STREAMON, &type) < 0)
     {
         LOG_ERROR << "Failed to start streaming";
@@ -101,10 +103,8 @@ bool NvV4L2CameraHelper::start_stream()
 
 bool NvV4L2CameraHelper::stop_stream()
 {
-    enum v4l2_buf_type type;
-
     /* Stop v4l2 streaming */
-    type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    auto type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
     if (ioctl(camFD, VIDIOC_STREAMOFF, &type))
     {
         LOG_ERROR << "Failed to stop streaming";
@@ -193,6 +193,7 @@ bool NvV4L2CameraHelper::queueBufferToCamera()
     return true;
 }
 
+// #Mar10_Feedback - seems dummy function - whoever is calling - call request_camera_buff directly
 bool NvV4L2CameraHelper::prepare_buffers()
 {
     if (!request_camera_buff())

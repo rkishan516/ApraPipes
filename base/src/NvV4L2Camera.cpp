@@ -8,10 +8,14 @@ NvV4L2Camera::NvV4L2Camera(NvV4L2CameraProps props)
 	mOutputPinId = addOutputPin(mOutputMetadata);
 
 	mHelper = NvV4L2CameraHelper::create([&](frame_sp &frame) -> void {
-		frame_container frames;
-		frames.insert(make_pair(mOutputPinId, frame));
-		send(frames);
-	},[&]() -> frame_sp {return makeFrame(mOutputMetadata->getDataSize(), mOutputPinId);});	
+			frame_container frames;
+			frames.insert(make_pair(mOutputPinId, frame));
+			send(frames); 
+		}, [&]() -> frame_sp { 
+			// #Mar10_Feedback - store datasize
+			return makeFrame(mOutputMetadata->getDataSize(), mOutputPinId); 
+		}
+	);
 	height = props.height;
 	width = props.width;
 	maxConcurrentFrames = props.maxConcurrentFrames;
@@ -35,6 +39,8 @@ bool NvV4L2Camera::init()
 	{
 		return false;
 	}
+	
+	// #Mar10_Feedback - use the return bool value and return it - if start returns false, so something failed/bad
 	mHelper->start(width, height,maxConcurrentFrames);
 
 	return true;
