@@ -11,14 +11,10 @@
 class CCSaverProps : public ModuleProps
 {
 public:
-	CCSaverProps(ImageMetadata::ImageType _imageType, cudastream_sp& _stream)
+	CCSaverProps(ImageMetadata::ImageType _imageType)
 	{
-		stream_sp = _stream;
-		stream = _stream->getCudaStream();
 		imageType = _imageType;
 	}
-	cudastream_sp stream_sp;
-	cudaStream_t stream;
 	ImageMetadata::ImageType imageType;	
 };
 

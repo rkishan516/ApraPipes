@@ -179,7 +179,7 @@ void keyStrokePipeLine(context_t *ctx){
     cudaFree(0);
 
     /* Common Pipe */
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
+    Logger::setLogLevel(boost::log::trivial::severity_level::error);
     NvV4L2CameraProps sourceProps(1920, 1080, 10);
 	sourceProps.fps = 60;
     sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
@@ -187,6 +187,8 @@ void keyStrokePipeLine(context_t *ctx){
 
     CCDMAProps ccdmaprops(ImageMetadata::RGBA);
     ccdmaprops.qlen = 1;
+    ccdmaprops.skipN = 1;
+    ccdmaprops.skipD = 10;
 	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
 	source->setNext(ccdma);
 
@@ -198,23 +200,14 @@ void keyStrokePipeLine(context_t *ctx){
     auto keystroke = boost::shared_ptr<Module>(new KeyStrokeModule(keystrokeProps));
     ccdma->setNext(keystroke);
 
-    CCSaverProps ccsaverprops(ImageMetadata::RGB, stream);
+    CCSaverProps ccsaverprops(ImageMetadata::RGB);
     ccsaverprops.qlen = 1;
     auto ccsaver = boost::shared_ptr<Module>(new CCSaver(ccsaverprops));
     keystroke->setNext(ccsaver);
 
-    auto copyProps = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
-	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	ccsaver->setNext(copy);
-
-    CuCtxSynchronizeProps cuCtxSyncProps0;
-    cuCtxSyncProps0.qlen = 1;
-    auto cuctx0 = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps0));
-	copy->setNext(cuctx0);
-
     std::string path( std::string(ctx->outputDirectory) + "???.raw" );
     auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str(), true)));
-	cuctx0->setNext(fileWriter);
+	ccsaver->setNext(fileWriter);
 
     
     /* Renderer Pipe */
@@ -254,7 +247,7 @@ void keyStrokePipeLine(context_t *ctx){
     auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
 	cuctx->setNext(gltransform);
     if(ctx->enable_display){
-        EglRendererProps eglProps(0, 0);
+        EglRendererProps eglProps(0, 0, 1024, 512);
         eglProps.logHealth = true;
         eglProps.logHealthFrequency = 100;
         eglProps.qlen = 1;
@@ -279,34 +272,6 @@ int main(int argc, char* argv[])
     context_t ctx;
     set_defaults(&ctx);
     if(parse_cmdline(&ctx, argc, argv)){
-        // TensorRTTest();
-        // LOG_ERROR << "Starting Null Test..................";
-        // nullTest();
-        // LOG_ERROR << "Starting SGL Test..................";
-        // sgl();
-        // LOG_ERROR << "Starting SGLR1 Test..................";
-        // sglr1();
-        // LOG_ERROR << "Starting SGLR1R2 Test..................";
-        // sglr1r2();
-        // LOG_ERROR << "Starting SGLCCCS Test..................";
-        // sglcccs();
-        // LOG_ERROR << "Starting SGLCCCPUCS Test..................";
-        // sglccCpucs();
-        // LOG_ERROR << "Starting SGLCCTRTCS Test..................";
-        // sglcctrtcs();
-        // LOG_ERROR << "Starting SGLCCTRTCMCS Test..................";
-        // sglcctrtcmcs();
-        // LOG_ERROR << "Starting SGLCCCPUTRTCSCMCPU Test..................";
-        // sglccCputrtcscmCpu();
-        // LOG_ERROR << "Starting SGLCCCPUTRTCSCMR1R2 Test..................";
-        // sglccCputrtcscmr1r2();
-        // LOG_ERROR << "Starting Full Pipeline Test..................";
-        // pipelineFunction();
-        // LOG_ERROR << "Starting FRHDCMCSR1 Pipeline Test..................";
-        // frhdcmcsr1();
-        // fileReaderTest();
-        // LOG_ERROR << "Starting Full New Pipeline Test..................";
-        // newPipeLine(&ctx);
         LOG_ERROR << "Starting Full New KeyStroke Pipeline Test..................";
         keyStrokePipeLine(&ctx);
     }

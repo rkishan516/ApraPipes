@@ -20,16 +20,6 @@ class CCSaver::Detail
 public:
 	Detail(CCSaverProps &_props) : props(_props)
 	{
-        eglDisplay = eglGetDisplay(EGL_DEFAULT_DISPLAY);
-        if(eglDisplay == EGL_NO_DISPLAY)
-        {
-            throw AIPException(AIP_FATAL, "eglGetDisplay failed");
-        } 
-
-        if (!eglInitialize(eglDisplay, NULL, NULL))
-        {
-        throw AIPException(AIP_FATAL, "eglInitialize failed");
-        }
 	}
 
 	~Detail()
@@ -37,34 +27,17 @@ public:
 
 	}
 
-	bool setMetadata(framemetadata_sp& input, framemetadata_sp& output)
-	{
-		auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(input);
-		resolution = {inputRawMetadata->getWidth(), inputRawMetadata->getHeight()};
-		srcStep = inputRawMetadata->getStep();
-		auto outputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(output);
-		dstStep = outputRawMetadata->getStep();
-
-		return true;
-	}
-
 	bool compute(frame_sp& frame, void* buffer)
 	{
-        auto srcPtr = (static_cast<DMAFDWrapper *>(frame->data())->cudaPtr);
-        
-		auto dst = static_cast<Npp8u*>(buffer);
+        auto srcPtr = (static_cast<DMAFDWrapper *>(frame->data())->hostPtr);
 
-        lanuchAPPRGBAToRGBSaver(srcPtr, srcStep, dst, dstStep, resolution, props.stream);
+		cv::Mat temp(1024, 1024, CV_8UC4, srcPtr);
+        cv::Mat dest(1024, 1024, CV_8UC3, buffer);
+        cv::cvtColor(temp, dest, cv::COLOR_RGBA2RGB);
 
 		return true;
 	}
-
-    EGLDisplay eglDisplay;
-private:
-	size_t srcStep;
-	size_t dstStep;
-	NppiSize resolution;
-	
+private:	
 	CCSaverProps props;
 };
 
@@ -118,9 +91,9 @@ bool CCSaver::validateOutputPins()
 	}
 
 	FrameMetadata::MemType memType = metadata->getMemType();
-	if (memType != FrameMetadata::MemType::CUDA_DEVICE)
+	if (memType != FrameMetadata::MemType::HOST)
 	{
-		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be CUDA_DEVICE. Actual<" << memType << ">";
+		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be HOST. Actual<" << memType << ">";
 		return false;
 	}	
 
@@ -134,7 +107,7 @@ void CCSaver::addInputPin(framemetadata_sp& metadata, string& pinId)
 	switch (props.imageType)
 	{
 		case ImageMetadata::RGB:
-			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::CUDA_DEVICE));
+			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::HOST));
 			break;
 		default:
 			throw AIPException(AIP_FATAL, "Unsupported Image Type<" + std::to_string(inputRawMetadata->getImageType()) + ">");
@@ -194,11 +167,10 @@ void CCSaver::setMetadata(framemetadata_sp& metadata)
 		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");
 	}
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mOutputMetadata);
-	RawImageMetadata outputMetadata(width, height, props.imageType, CV_8UC3, 512, CV_8U, FrameMetadata::CUDA_DEVICE, true);		
+	RawImageMetadata outputMetadata(width, height, props.imageType, CV_8UC3, width*3, CV_8U, FrameMetadata::HOST, true);		
 	rawOutMetadata->setData(outputMetadata);
 
 	mFrameLength = mOutputMetadata->getDataSize();
-	mDetail->setMetadata(metadata, mOutputMetadata);
 }
 
 bool CCSaver::shouldTriggerSOS()
