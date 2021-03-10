@@ -39,7 +39,9 @@
 typedef struct
 {
     const char * file;
+    const char* outputDirectory;
     unsigned int save_n_frame;
+    bool enable_display;
 } context_t;
 
 static void
@@ -47,12 +49,25 @@ print_usage(void)
 {
     std::cout << ("\n\tUsage: trt_sample [OPTIONS]\n\n"
            "\tExample: \n"
-           "\t./trt_sample -e ../sample.engine -n 30\n\n"
+           "\t./trt_sample -e ../sample.engine -n 30 -o ./out/ \n\n"
            "\tSupported options:\n"
            "\t-e\t\tSet TensorRT engine file\n"
            "\t-n\t\tSave the next n frames after Pressing s\n"
+           "\t-o\t\tOutput directory where frames to be stored\n"
+           "\t-d\t\tdisable display\n"
            "\t-h\t\tPrint this usage\n\n"
            "\tNOTE: It runs infinitely until you terminate it with <ctrl+c>\n");
+}
+
+static void
+set_defaults(context_t * ctx)
+{
+    memset(ctx, 0, sizeof(context_t));
+
+    ctx->file = "../sample.engine";
+    ctx->outputDirectory = "./out/";
+    ctx->save_n_frame = 0;
+    ctx->enable_display = true;
 }
 
 static bool
@@ -66,7 +81,7 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
     ctx->save_n_frame = 0;
-    while ((c = getopt(argc, argv, "e:n:h")) != -1)
+    while ((c = getopt(argc, argv, "e:n:o:dh")) != -1)
     {
         switch (c)
         {
@@ -75,6 +90,12 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
                 break;
             case 'n':
                 ctx->save_n_frame = strtol(optarg, NULL, 10);
+                break;
+            case 'd':
+                ctx->enable_display = false;
+                break;
+            case 'o':
+                ctx->outputDirectory = optarg;
                 break;
             case 'h':
                 print_usage();
@@ -87,492 +108,6 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
     }
 
     return true;
-}
-
-
-void nullTest(){
-    PipeLine p("test");
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sgl(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglr1(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA,960,270,0,0);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    EglRendererProps eglProps(0, 0,960,270);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-    ccdma->setNext(sink);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglr1r2(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    EglRendererProps eglProps(0, 0,1280, 640);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-    ccdma->setNext(sink);
-
-	auto sink1 = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-    ccdma->setNext(sink1);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglcccs(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.logHealth = true;
-	ccdmacuprops.logHealthFrequency = 100;
-	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
-	ccdma->setNext(ccdmacu);
-
-    CudaStreamSynchronizeProps streamProps(stream);
-    streamProps.logHealth = true;
-	streamProps.logHealthFrequency = 100;
-    auto cs = boost::shared_ptr<Module>(new CudaStreamSynchronize(streamProps));
-    ccdmacu->setNext(cs);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglccCpucs(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    CCDMAHostProps ccdmahostprops(ImageMetadata::RGB);
-    ccdmahostprops.logHealth = true;
-	ccdmahostprops.logHealthFrequency = 100;
-	auto ccdmahost = boost::shared_ptr<Module>(new CCDMAHost(ccdmahostprops));
-	ccdma->setNext(ccdmahost);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
-	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	ccdmahost->setNext(copy);
-
-    auto copyProps1 = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
-	auto copy1 = boost::shared_ptr<Module>(new CudaMemCopy(copyProps1));
-	copy->setNext(copy1);
-
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglcctrtcs(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.logHealth = true;
-	ccdmacuprops.logHealthFrequency = 100;
-	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
-	ccdma->setNext(ccdmacu);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    ccdmacu->setNext(tensorrt);
-
-    CudaStreamSynchronizeProps streamProps(stream);
-    streamProps.logHealth = true;
-	streamProps.logHealthFrequency = 100;
-    auto cs = boost::shared_ptr<Module>(new CudaStreamSynchronize(streamProps));
-    tensorrt->setNext(cs);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglcctrtcmcs(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.logHealth = true;
-	ccdmacuprops.logHealthFrequency = 100;
-	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
-	ccdma->setNext(ccdmacu);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    ccdmacu->setNext(tensorrt);
-
-    CCCuDMAProps cccudmaprops(ImageMetadata::RGBA,stream);
-    cccudmaprops.logHealth = true;
-	cccudmaprops.logHealthFrequency = 100;
-    auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
-	tensorrt->setNext(cccudma);
-
-    CudaStreamSynchronizeProps streamProps(stream);
-    streamProps.logHealth = true;
-	streamProps.logHealthFrequency = 100;
-    auto cs = boost::shared_ptr<Module>(new CudaStreamSynchronize(streamProps));
-    cccudma->setNext(cs);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglccCputrtcscmCpu(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    CCDMAHostProps ccdmahostprops(ImageMetadata::RGB);
-    ccdmahostprops.logHealth = true;
-	ccdmahostprops.logHealthFrequency = 100;
-	auto ccdmahost = boost::shared_ptr<Module>(new CCDMAHost(ccdmahostprops));
-	ccdma->setNext(ccdmahost);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
-	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	ccdmahost->setNext(copy);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    copy->setNext(tensorrt);
-
-    auto copyProps1 = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
-	auto copy1 = boost::shared_ptr<Module>(new CudaMemCopy(copyProps1));
-	tensorrt->setNext(copy1);
-
-    CudaStreamSynchronizeProps streamProps(stream);
-    streamProps.logHealth = true;
-	streamProps.logHealthFrequency = 100;
-    auto cs = boost::shared_ptr<Module>(new CudaStreamSynchronize(streamProps));
-    copy1->setNext(cs);
-
-    CMHostDMAProps cmhostdmaprops(ImageMetadata::RGBA);
-    cmhostdmaprops.logHealth = true;
-	cmhostdmaprops.logHealthFrequency = 100;
-    auto cmhostdma = boost::shared_ptr<Module>(new CMHostDMA(cmhostdmaprops));
-	cs->setNext(cmhostdma);
-
-    auto muxer = boost::shared_ptr<Module>(new FramesMuxer());
-    ccdma->setNext(muxer);
-    cmhostdma->setNext(muxer);
-    auto muxerOutputs = muxer->getAllOutputPinsByType(FrameMetadata::RAW_IMAGE);
-    std::vector<std::string> leftPin = {muxerOutputs[1]};
-    std::vector<std::string> rightPin = {muxerOutputs[0]};
-
-    EglRendererProps eglProps(0, 0,1280, 640);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	muxer->setNext(sink, leftPin);
-	auto sink1 = boost::shared_ptr<Module>(new EglRenderer(EglRendererProps(640, 0,1280, 640)));
-	muxer->setNext(sink1, rightPin);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void sglccCputrtcscmr1r2(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-
-    CCDMAHostProps ccdmahostprops(ImageMetadata::RGB);
-    ccdmahostprops.logHealth = true;
-	ccdmahostprops.logHealthFrequency = 100;
-	auto ccdmahost = boost::shared_ptr<Module>(new CCDMAHost(ccdmahostprops));
-	ccdma->setNext(ccdmahost);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
-	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	ccdmahost->setNext(copy);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    copy->setNext(tensorrt);
-
-    CCCuDMAProps cccudmaprops(ImageMetadata::RGBA,stream);
-    cccudmaprops.logHealth = true;
-	cccudmaprops.logHealthFrequency = 100;
-    auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
-	tensorrt->setNext(cccudma);
-
-    CudaStreamSynchronizeProps streamProps(stream);
-    streamProps.logHealth = true;
-	streamProps.logHealthFrequency = 100;
-    auto cs = boost::shared_ptr<Module>(new CudaStreamSynchronize(streamProps));
-    cccudma->setNext(cs);
-    
-    auto muxer = boost::shared_ptr<Module>(new FramesMuxer());
-    ccdma->setNext(muxer);
-    cs->setNext(muxer);
-    auto muxerOutputs = muxer->getAllOutputPinsByType(FrameMetadata::RAW_IMAGE);
-    std::vector<std::string> leftPin = {muxerOutputs[1]};
-    std::vector<std::string> rightPin = {muxerOutputs[0]};
-
-    EglRendererProps eglProps(0, 0,540, 540);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	muxer->setNext(sink, leftPin);
-	auto sink1 = boost::shared_ptr<Module>(new EglRenderer(EglRendererProps(540, 0,540, 540)));
-	muxer->setNext(sink1, rightPin);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(100));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
-void pipelineFunction(){
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.logHealth = true;
-	sourceProps.logHealthFrequency = 100;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.logHealth = true;
-	ccdmaprops.logHealthFrequency = 100;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-    
-    auto stream = cudastream_sp(new ApraCudaStream);
-    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.logHealth = true;
-	ccdmacuprops.logHealthFrequency = 100;
-	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
-	ccdma->setNext(ccdmacu);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    ccdmacu->setNext(tensorrt);
-
-    CCCuDMAProps cccudmaprops(ImageMetadata::RGBA, stream);
-    cccudmaprops.logHealth = true;
-	cccudmaprops.logHealthFrequency = 100;
-    auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
-	tensorrt->setNext(cccudma);
-    
-    auto muxer = boost::shared_ptr<Module>(new FramesMuxer());
-    ccdma->setNext(muxer);
-    cccudma->setNext(muxer);
-    auto muxerOutputs = muxer->getAllOutputPinsByType(FrameMetadata::RAW_IMAGE);
-    std::vector<std::string> leftPin = {muxerOutputs[1]};
-    std::vector<std::string> rightPin = {muxerOutputs[0]};
-
-    EglRendererProps eglProps(0, 0,540, 540);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	muxer->setNext(sink, leftPin);
-	auto sink1 = boost::shared_ptr<Module>(new EglRenderer(EglRendererProps(540, 0,540, 540)));
-	muxer->setNext(sink1, rightPin);
-
-	PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(600));
-	p.stop();
-	p.term();
-	p.wait_for_all();
 }
 
 
@@ -677,7 +212,8 @@ void keyStrokePipeLine(context_t *ctx){
     auto cuctx0 = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps0));
 	copy->setNext(cuctx0);
 
-    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps("../data/???.raw", true)));
+    std::string path( std::string(ctx->outputDirectory) + "???.raw" );
+    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str(), true)));
 	cuctx0->setNext(fileWriter);
 
     
@@ -709,17 +245,22 @@ void keyStrokePipeLine(context_t *ctx){
     auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
 	cccudma->setNext(cuctx);
 
-    GLTransformProps gltransformProps(ImageMetadata::RGBA, 512, 1024, 0 ,0);
+    GLTransformProps gltransformProps(ImageMetadata::RGBA, 1024, 512, 0 ,0);
     gltransformProps.qlen = 1;
+    if(!ctx->enable_display){
+        gltransformProps.logHealth = true;
+    	gltransformProps.logHealthFrequency = 100;
+    }
     auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
 	cuctx->setNext(gltransform);
-
-    EglRendererProps eglProps(0, 0,512, 1024);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-    eglProps.qlen = 1;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	gltransform->setNext(sink);
+    if(ctx->enable_display){
+        EglRendererProps eglProps(0, 0);
+        eglProps.logHealth = true;
+        eglProps.logHealthFrequency = 100;
+        eglProps.qlen = 1;
+        auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
+        gltransform->setNext(sink);
+    }
 
     PipeLine p("test");
 	p.appendModule(source);
@@ -732,66 +273,11 @@ void keyStrokePipeLine(context_t *ctx){
 	p.wait_for_all();
 }
 
-void fileReaderTest(){
-    auto width = 1024;
-	auto height = 1024;
-
-	auto fileReader = boost::shared_ptr<FileReaderModule>(new FileReaderModule(FileReaderModuleProps("./../test_rgb.raw")));
-	auto metadata = framemetadata_sp(new RawImageMetadata(width, height, ImageMetadata::RGB, CV_8UC3, width*3, CV_8U, FrameMetadata::HOST));
-	auto rawImagePin = fileReader->addOutputPin(metadata);
-
-    auto stream = cudastream_sp(new ApraCudaStream);
-    auto copyProps = CudaMemCopyProps(cudaMemcpyHostToDevice, stream);
-	auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
-	fileReader->setNext(copy);
-
-    auto testModule = boost::shared_ptr<Module>(new Test(TestProps(stream,true)));
-    copy->setNext(testModule);
-
-    TensorRTProps tensorrtprops("../sample.engine",stream);
-    tensorrtprops.logHealth = true;
-	tensorrtprops.logHealthFrequency = 100;
-    tensorrtprops.qlen = 1;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    testModule->setNext(tensorrt);
-
-    auto testModule1 = boost::shared_ptr<Module>(new Test(TestProps(stream,false)));
-    tensorrt->setNext(testModule1);
-
-    auto copyProps1 = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
-	auto copy1 = boost::shared_ptr<Module>(new CudaMemCopy(copyProps1));
-	testModule1->setNext(copy1);
-
-    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps("../test_mono.raw", true)));
-	copy1->setNext(fileWriter);
-
-	fileReader->init();
-	copy->init();
-    testModule->init();
-    tensorrt->init();
-    testModule1->init();
-    copy1->init();
-	fileWriter->init();
-
-	fileReader->play(true);
-
-
-	for (auto i = 0; i < 1; i++)
-	{
-		fileReader->step();
-        copy->step();
-        testModule->step();
-        tensorrt->step();
-        testModule1->step();
-        copy1->step();
-        fileWriter->step();
-	}
-
-}
 // main pipeline ------------------------------------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
     context_t ctx;
+    set_defaults(&ctx);
     if(parse_cmdline(&ctx, argc, argv)){
         // TensorRTTest();
         // LOG_ERROR << "Starting Null Test..................";
