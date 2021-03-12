@@ -39,7 +39,6 @@ public:
             size = file.tellg();
             file.seekg(0, file.beg);
             trtModelStream_.resize(size);
-            std::cout << "size" << trtModelStream_.size() << std::endl;
             file.read(trtModelStream_.data(), size);
             file.close();
         }

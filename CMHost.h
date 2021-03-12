@@ -6,22 +6,22 @@
 #include <boost/pool/object_pool.hpp>
 
 
-class CMHostDMAProps : public ModuleProps
+class CMHostProps : public ModuleProps
 {
 public:
-	CMHostDMAProps(ImageMetadata::ImageType _imageType)
+	CMHostProps(ImageMetadata::ImageType _imageType)
 	{
 		imageType = _imageType;
 	}
 	ImageMetadata::ImageType imageType;	
 };
 
-class CMHostDMA : public Module
+class CMHost : public Module
 {
 
 public:
-	CMHostDMA(CMHostDMAProps _props);
-	virtual ~CMHostDMA();
+	CMHost(CMHostProps _props);
+	virtual ~CMHost();
 	bool init();
 	bool term();
 
@@ -42,5 +42,5 @@ private:
 	size_t mFrameLength;
 	framemetadata_sp mOutputMetadata;
 	std::string mOutputPinId;
-	CMHostDMAProps props;		
+	CMHostProps props;		
 };

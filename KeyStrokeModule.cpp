@@ -44,23 +44,11 @@ KeyStrokeModule::KeyStrokeModule(KeyStrokeModuleProps _props) :Module(TRANSFORM,
 
 bool KeyStrokeModule::validateInputPins()
 {
-	if (getNumberOfInputPins() != 1)
-	{
-		LOG_ERROR << "<" << getId() << ">::validateInputPins size is expected to be 1. Actual<" << getNumberOfInputPins() << ">";
-		return false;
-	}
-
 	return true;
 }
 
 bool KeyStrokeModule::validateOutputPins()
 {
-	if (getNumberOfOutputPins() != 1)
-	{
-		LOG_ERROR << "<" << getId() << ">::validateOutputPins size is expected to be 1. Actual<" << getNumberOfOutputPins() << ">";
-		return false;
-	}
-
 	return true;
 }
 

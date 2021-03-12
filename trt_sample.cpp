@@ -29,7 +29,7 @@
 #include "FramesMuxer.h"
 #include "CudaStreamSynchronize.h"
 #include "CCDMAHost.h"
-#include "CMHostDMA.h"
+#include "CMHost.h"
 #include "TestModule.h"
 #include "GLTransform.h"
 #include "CuCtxSynchronize.h"
@@ -41,6 +41,7 @@ typedef struct
     const char * file;
     const char* outputDirectory;
     unsigned int save_n_frame;
+    unsigned int fps;
     bool enable_display;
     bool enable_log;
 } context_t;
@@ -54,6 +55,7 @@ print_usage(void)
            "\tSupported options:\n"
            "\t-e\t\tSet TensorRT engine file\n"
            "\t-n\t\tSave the next n frames after Pressing s\n"
+           "\t-f\t\tSet Output framerate in fps\n"
            "\t-o\t\tOutput directory where frames to be stored\n"
            "\t-d\t\tdisable display\n"
            "\t-h\t\tPrint this usage\n\n"
@@ -70,6 +72,7 @@ set_defaults(context_t * ctx)
     ctx->save_n_frame = 1;
     ctx->enable_display = true;
     ctx->enable_log = false;
+    ctx->fps = 30;
 }
 
 static bool
@@ -83,7 +86,7 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
     ctx->save_n_frame = 0;
-    while ((c = getopt(argc, argv, "e:n:o:ldh")) != -1)
+    while ((c = getopt(argc, argv, "e:n:f:o:ldh")) != -1)
     {
         switch (c)
         {
@@ -92,6 +95,9 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
                 break;
             case 'n':
                 ctx->save_n_frame = strtol(optarg, NULL, 10);
+                break;
+            case 'f':
+                ctx->fps = strtol(optarg, NULL, 10);
                 break;
             case 'd':
                 ctx->enable_display = false;
@@ -196,30 +202,14 @@ void keyStrokePipeLine(context_t *ctx){
 
     CCDMAProps ccdmaprops(ImageMetadata::RGBA);
     ccdmaprops.qlen = 1;
-    ccdmaprops.skipN = 1;
-    ccdmaprops.skipD = 30;
+    int fps = ctx->fps;
+    uint32_t gcd =  __gcd(fps, 30);
+    ccdmaprops.skipN = (30 - ctx->fps)/gcd;
+    ccdmaprops.skipD = 30/gcd;
 	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
 	source->setNext(ccdma);
 
     auto stream = cudastream_sp(new ApraCudaStream);
-
-    /* KeyStroke Pipe */
-    KeyStrokeModuleProps keystrokeProps(ctx->save_n_frame);
-    keystrokeProps.qlen = 1;
-    auto keystroke = boost::shared_ptr<Module>(new KeyStrokeModule(keystrokeProps));
-    ccdma->setNext(keystroke);
-
-    CCSaverProps ccsaverprops(ImageMetadata::RGB);
-    ccsaverprops.qlen = 1;
-    auto ccsaver = boost::shared_ptr<Module>(new CCSaver(ccsaverprops));
-    keystroke->setNext(ccsaver);
-
-    std::string path( std::string(ctx->outputDirectory) + "???.raw" );
-    auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str(), true)));
-	ccsaver->setNext(fileWriter);
-
-    
-    /* Renderer Pipe */
     CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
     ccdmacuprops.qlen = 1;
 	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
@@ -237,6 +227,44 @@ void keyStrokePipeLine(context_t *ctx){
     tensorrt->setNext(muxer);
     ccdma->setNext(muxer);
 
+    /* KeyStroke Pipe */
+    KeyStrokeModuleProps keystrokeProps(ctx->save_n_frame);
+    keystrokeProps.qlen = 1;
+    auto keystroke = boost::shared_ptr<Module>(new KeyStrokeModule(keystrokeProps));
+    muxer->setNext(keystroke);
+
+    vector<string> outputPins = keystroke->getAllOutputPinsByType(FrameMetadata::FrameType::RAW_IMAGE);
+    vector<string> ccdmaOutputPin = {outputPins[0]};
+    vector<string> tensorRTOutputPin = {outputPins[1]};
+
+    /* Input Frame Save PipeLine Start*/
+        CCSaverProps ccsaverprops(ImageMetadata::RGB);
+        ccsaverprops.qlen = 1;
+        auto ccsaver = boost::shared_ptr<Module>(new CCSaver(ccsaverprops));
+        keystroke->setNext(ccsaver, ccdmaOutputPin);
+
+        std::string path( std::string(ctx->outputDirectory) + "Input/???.raw" );
+        auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str(), true)));
+        ccsaver->setNext(fileWriter);
+    /* Input Frame Save PipeLine end*/
+
+    /* Output Frame Save Pipeline Start*/
+        auto copyProps = CudaMemCopyProps(cudaMemcpyDeviceToHost, stream);
+        auto copy = boost::shared_ptr<Module>(new CudaMemCopy(copyProps));
+        keystroke->setNext(copy, tensorRTOutputPin);
+
+        CMHostProps cmhostprops(ImageMetadata::RGB);
+        cmhostprops.qlen = 1;
+        auto cmhost = boost::shared_ptr<Module>(new CMHost(cmhostprops));
+        copy->setNext(cmhost);
+
+        std::string path1( std::string(ctx->outputDirectory) + "Output/???.raw" );
+        auto fileWriter1 = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path1.c_str(), true)));
+        cmhost->setNext(fileWriter1);
+    /* Output Frame Save Pipeline end*/
+    /* KeyStroke Pipe end */
+
+    /* Renderer Pipe */
     CCCuDMAProps cccudmaprops(ImageMetadata::RGBA, stream);
     cccudmaprops.qlen = 1;
     auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
@@ -244,18 +272,18 @@ void keyStrokePipeLine(context_t *ctx){
 
     CuCtxSynchronizeProps cuCtxSyncProps;
     cuCtxSyncProps.qlen = 1;
+    if(!ctx->enable_display){
+        cuCtxSyncProps.logHealth = true;
+    	cuCtxSyncProps.logHealthFrequency = 100;
+    }
     auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
 	cccudma->setNext(cuctx);
 
-    GLTransformProps gltransformProps;
-    gltransformProps.qlen = 1;
-    if(!ctx->enable_display){
-        gltransformProps.logHealth = true;
-    	gltransformProps.logHealthFrequency = 100;
-    }
-    auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
-	cuctx->setNext(gltransform);
     if(ctx->enable_display){
+        GLTransformProps gltransformProps;
+        gltransformProps.qlen = 1;
+        auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
+        cuctx->setNext(gltransform);
         EglRendererProps eglProps(0, 0);
         eglProps.logHealth = true;
         eglProps.logHealthFrequency = 100;

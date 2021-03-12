@@ -1,4 +1,4 @@
-#include "CMHostDMA.h"
+#include "CMHost.h"
 #include "FrameMetadata.h"
 #include "Frame.h"
 #include "Logger.h"
@@ -7,10 +7,10 @@
 #include "DMAFDWrapper.h"
 
 
-class CMHostDMA::Detail
+class CMHost::Detail
 {
 public:
-	Detail(CMHostDMAProps &_props) : props(_props)
+	Detail(CMHostProps &_props) : props(_props)
 	{
 	}
 
@@ -22,26 +22,27 @@ public:
 	bool compute(void* buffer, void* outFrame)
 	{
         cv::Mat temp(1024, 1024, CV_32FC1, buffer);
+		cv::Mat dest8u(1024, 1024, CV_8U);
         cv::Mat dest(1024, 1024, CV_8UC3, outFrame);
 		temp = 255*temp;
-        temp.convertTo(dest, CV_8U);
-        cv::applyColorMap(dest,dest, cv::COLORMAP_JET);
+        temp.convertTo(dest8u, CV_8U);
+        cv::applyColorMap(dest8u,dest, cv::COLORMAP_JET);
 
 		return true;
 	}
 private:
 
-	CMHostDMAProps props;
+	CMHostProps props;
 };
 
-CMHostDMA::CMHostDMA(CMHostDMAProps _props) : Module(TRANSFORM, "CMHostDMA", _props), props(_props), mFrameLength(0)
+CMHost::CMHost(CMHostProps _props) : Module(TRANSFORM, "CMHost", _props), props(_props), mFrameLength(0)
 {
 	mDetail.reset(new Detail(_props));	
 }
 
-CMHostDMA::~CMHostDMA() {}
+CMHost::~CMHost() {}
 
-bool CMHostDMA::validateInputPins()
+bool CMHost::validateInputPins()
 {
 	if (getNumberOfInputPins() != 1)
 	{
@@ -67,7 +68,7 @@ bool CMHostDMA::validateInputPins()
 	return true;
 }
 
-bool CMHostDMA::validateOutputPins()
+bool CMHost::validateOutputPins()
 {
 	if (getNumberOfOutputPins() != 1)
 	{
@@ -84,33 +85,25 @@ bool CMHostDMA::validateOutputPins()
 	}
 
 	FrameMetadata::MemType memType = metadata->getMemType();
-	if (memType != FrameMetadata::MemType::DMABUF)
+	if (memType != FrameMetadata::MemType::HOST)
 	{
-		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be DMABUF. Actual<" << memType << ">";
+		LOG_ERROR << "<" << getId() << ">::validateOutputPins input memType is expected to be HOST. Actual<" << memType << ">";
 		return false;
 	}	
 
 	return true;
 }
 
-void CMHostDMA::addInputPin(framemetadata_sp& metadata, string& pinId)
+void CMHost::addInputPin(framemetadata_sp& metadata, string& pinId)
 {
 	Module::addInputPin(metadata, pinId);
 	auto inputRawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
-	switch (props.imageType)
-	{
-		case ImageMetadata::RGBA:
-			mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::DMABUF));
-			break;
-		default:
-			throw AIPException(AIP_FATAL, "Unsupported Image Type<" + std::to_string(inputRawMetadata->getImageType()) + ">");
-	}
-
+	mOutputMetadata = framemetadata_sp(new RawImageMetadata(FrameMetadata::MemType::HOST));
 	mOutputMetadata->copyHint(*metadata.get());
 	mOutputPinId = addOutputPin(mOutputMetadata);	
 }
 
-bool CMHostDMA::init()
+bool CMHost::init()
 {
 	if (!Module::init())
 	{
@@ -120,19 +113,18 @@ bool CMHostDMA::init()
 	return true;
 }
 
-bool CMHostDMA::term()
+bool CMHost::term()
 {
 	return Module::term();
 }
 
-bool CMHostDMA::process(frame_container &frames)
+bool CMHost::process(frame_container &frames)
 {
 	cudaFree(0);
 	auto frame = frames.cbegin()->second;	
-    auto outFrame = makeFrame(mOutputMetadata->getDataSize(),mOutputPinId);
-    auto tempFrame = (static_cast<DMAFDWrapper *>(outFrame->data()))->hostPtr;
+    auto outFrame = makeFrame();
 
-    mDetail->compute(frame->data(),tempFrame);
+    mDetail->compute(frame->data(),outFrame->data());
 
 	frames.insert(make_pair(mOutputPinId, outFrame));
 	send(frames);
@@ -140,7 +132,7 @@ bool CMHostDMA::process(frame_container &frames)
 	return true;
 }
 
-bool CMHostDMA::processSOS(frame_sp &frame)
+bool CMHost::processSOS(frame_sp &frame)
 {
 	auto metadata = frame->getMetadata();
 	setMetadata(metadata);
@@ -148,7 +140,7 @@ bool CMHostDMA::processSOS(frame_sp &frame)
 	return true;
 }
 
-void CMHostDMA::setMetadata(framemetadata_sp& metadata)
+void CMHost::setMetadata(framemetadata_sp& metadata)
 {
 	auto rawMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(metadata);
 	auto width = rawMetadata->getWidth();
@@ -157,24 +149,20 @@ void CMHostDMA::setMetadata(framemetadata_sp& metadata)
 	auto depth = rawMetadata->getDepth();
 	auto inputImageType = rawMetadata->getImageType();
 
-	if (!(props.imageType == ImageMetadata::RGBA && inputImageType == ImageMetadata::MONO))
-	{
-		throw AIPException(AIP_NOTIMPLEMENTED, "Color conversion not supported");
-	}
 	auto rawOutMetadata = FrameMetadataFactory::downcast<RawImageMetadata>(mOutputMetadata);
-	RawImageMetadata outputMetadata(width, height, props.imageType, CV_8UC4, 512, CV_8U, FrameMetadata::DMABUF, true);		
+	RawImageMetadata outputMetadata(width, height, ImageMetadata::RGB, CV_8UC3, 0, CV_8U, FrameMetadata::HOST, true);		
 	rawOutMetadata->setData(outputMetadata);
 	
 
 	mFrameLength = mOutputMetadata->getDataSize();
 }
 
-bool CMHostDMA::shouldTriggerSOS()
+bool CMHost::shouldTriggerSOS()
 {
 	return mFrameLength == 0;
 }
 
-bool CMHostDMA::processEOS(string& pinId)
+bool CMHost::processEOS(string& pinId)
 {
 	mFrameLength = 0;
 	return true;

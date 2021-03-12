@@ -60,8 +60,8 @@ SET(CORE
 	TensorRT.cpp
 	CCDMAHost.h
 	CCDMAHost.cpp
-	CMHostDMA.h
-	CMHostDMA.cpp
+	CMHost.h
+	CMHost.cpp
 	TestModule.h
 	TestModule.cpp
 	launchDivision.cu
