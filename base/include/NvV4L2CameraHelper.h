@@ -1,6 +1,5 @@
 #pragma once
 
-// #Mar10_Feedback - cleanup headers - keep only what is required - pool is not required - extframe ? - queue ?
 #include <memory>
 #include <thread>
 #include "ExtFrame.h"
@@ -15,7 +14,7 @@ public:
     typedef std::function<void (frame_sp&)> SendFrame;
 
 public:
-    NvV4L2CameraHelper();
+    NvV4L2CameraHelper(SendFrame sendFrame,std::function<frame_sp()> _makeFrame);
     ~NvV4L2CameraHelper();
     static std::shared_ptr<NvV4L2CameraHelper> create(SendFrame sendFrame, std::function<frame_sp()> _makeFrame);
 

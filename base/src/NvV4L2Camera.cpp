@@ -1,24 +1,20 @@
 #include "NvV4L2Camera.h"
 #include "FrameMetadata.h"
 
-NvV4L2Camera::NvV4L2Camera(NvV4L2CameraProps props)
-	: Module(SOURCE, "NvV4L2Camera", props)
+NvV4L2Camera::NvV4L2Camera(NvV4L2CameraProps _props)
+	: Module(SOURCE, "NvV4L2Camera", _props), props(_props)
 {
-	mOutputMetadata = framemetadata_sp(new RawImageMetadata(props.width, props.height, ImageMetadata::ImageType::UYVY, CV_8UC3, size_t(0), CV_8U, FrameMetadata::MemType::DMABUF));
+	auto mOutputMetadata = framemetadata_sp(new RawImageMetadata(props.width, props.height, ImageMetadata::ImageType::UYVY, CV_8UC3, size_t(0), CV_8U, FrameMetadata::MemType::DMABUF));
 	mOutputPinId = addOutputPin(mOutputMetadata);
 
-	mHelper = NvV4L2CameraHelper::create([&](frame_sp &frame) -> void {
+	mHelper = std::make_shared<NvV4L2CameraHelper>([&](frame_sp &frame) -> void {
 			frame_container frames;
 			frames.insert(make_pair(mOutputPinId, frame));
 			send(frames); 
-		}, [&]() -> frame_sp { 
-			// #Mar10_Feedback - store datasize
-			return makeFrame(mOutputMetadata->getDataSize(), mOutputPinId); 
+		}, [&]() -> frame_sp {
+			return makeFrame(); 
 		}
 	);
-	height = props.height;
-	width = props.width;
-	maxConcurrentFrames = props.maxConcurrentFrames;
 }
 
 NvV4L2Camera::~NvV4L2Camera() {}
@@ -40,10 +36,7 @@ bool NvV4L2Camera::init()
 		return false;
 	}
 	
-	// #Mar10_Feedback - use the return bool value and return it - if start returns false, so something failed/bad
-	mHelper->start(width, height,maxConcurrentFrames);
-
-	return true;
+	return mHelper->start(props.width, props.height, props.maxConcurrentFrames);
 }
 
 bool NvV4L2Camera::term()

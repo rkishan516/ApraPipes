@@ -5,7 +5,7 @@
 #include "nvbuf_utils.h"
 #include "Logger.h"
 
-NvV4L2CameraHelper::NvV4L2CameraHelper()
+NvV4L2CameraHelper::NvV4L2CameraHelper(SendFrame sendFrame,std::function<frame_sp()> _makeFrame)
 {
     // hardcoded device name and pixfmt which is fine for now 
     mCamDevname = "/dev/video0";
@@ -13,6 +13,8 @@ NvV4L2CameraHelper::NvV4L2CameraHelper()
     mCamPixFmt = V4L2_PIX_FMT_UYVY;
 
     mRunning = false;
+    mSendFrame = sendFrame;
+    mMakeFrame = _makeFrame;
 }
 
 NvV4L2CameraHelper::~NvV4L2CameraHelper()
@@ -20,16 +22,6 @@ NvV4L2CameraHelper::~NvV4L2CameraHelper()
     if (mCamFD > 0){
         close(mCamFD);
     }
-}
-
-std::shared_ptr<NvV4L2CameraHelper> NvV4L2CameraHelper::create(SendFrame sendFrame,std::function<frame_sp()> _makeFrame)
-{
-    auto instance = std::make_shared<NvV4L2CameraHelper>();
-    // #Mar10_Feedback - you can pass the two variables as arguments to constructor and remove the static create method
-    instance->mSendFrame = sendFrame;
-    instance->mMakeFrame = _makeFrame;
-
-    return instance;
 }
 
 bool NvV4L2CameraHelper::cameraInitialize()

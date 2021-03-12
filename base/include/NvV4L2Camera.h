@@ -30,12 +30,7 @@ protected:
 	bool validateOutputPins();
 
 private:
-	// #Mar10_Feedback why can't you save the props variable instead of individual properties
-	uint32_t width;
-	uint32_t height;
-	uint32_t maxConcurrentFrames;
-	// #Mar10_Feedback this variable is not required ? All we need is dataSize, store datasize instead
-	framemetadata_sp mOutputMetadata;
+	NvV4L2CameraProps props;
 	std::string mOutputPinId;
 	std::shared_ptr<NvV4L2CameraHelper> mHelper;
 };

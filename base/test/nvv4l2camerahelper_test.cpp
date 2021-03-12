@@ -18,7 +18,7 @@ BOOST_AUTO_TEST_CASE(basic, *boost::unit_test::disabled())
     auto framemetadata = framemetadata_sp(new RawImageMetadata(width, height, ImageMetadata::ImageType::UYVY, CV_8UC3, size_t(0), CV_8U, FrameMetadata::MemType::DMABUF));
     framefactory_sp framefactory(new FrameFactory(framemetadata, 10));
 
-    auto helper = NvV4L2CameraHelper::create([](frame_sp &frame) -> void {
+    auto helper = std::make_shared<NvV4L2CameraHelper>([](frame_sp &frame) -> void {
         if(!frame.get())
         {
             LOG_ERROR << "RECEIVED NULLPTR FRAME";
@@ -61,7 +61,7 @@ BOOST_AUTO_TEST_CASE(cache, *boost::unit_test::disabled())
         auto framemetadata = framemetadata_sp(new RawImageMetadata(width, height, ImageMetadata::ImageType::UYVY, CV_8UC3, size_t(0), CV_8U, FrameMetadata::MemType::DMABUF));
         framefactory_sp framefactory(new FrameFactory(framemetadata,10));
 
-        auto helper = NvV4L2CameraHelper::create([&](frame_sp &frame) -> void {
+        auto helper = std::make_shared<NvV4L2CameraHelper>([&](frame_sp &frame) -> void {
             auto ptr = static_cast<DMAFDWrapper *>(frame->data());
             LOG_ERROR << "Received frame <>" << ptr->tempFD;
             cacheFrame = frame;
