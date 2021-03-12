@@ -244,7 +244,7 @@ void keyStrokePipeLine(context_t *ctx){
         keystroke->setNext(ccsaver, ccdmaOutputPin);
 
         std::string path( std::string(ctx->outputDirectory) + "Input/???.raw" );
-        auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str(), true)));
+        auto fileWriter = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path.c_str())));
         ccsaver->setNext(fileWriter);
     /* Input Frame Save PipeLine end*/
 
@@ -259,7 +259,7 @@ void keyStrokePipeLine(context_t *ctx){
         copy->setNext(cmhost);
 
         std::string path1( std::string(ctx->outputDirectory) + "Output/???.raw" );
-        auto fileWriter1 = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path1.c_str(), true)));
+        auto fileWriter1 = boost::shared_ptr<Module>(new FileWriterModule(FileWriterModuleProps(path1.c_str())));
         cmhost->setNext(fileWriter1);
     /* Output Frame Save Pipeline end*/
     /* KeyStroke Pipe end */
