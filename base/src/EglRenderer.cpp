@@ -7,7 +7,7 @@ class EglRenderer::Detail
 {
 
 public:
-	Detail(int _x_offset, int _y_offset, int _width, int _height): x_offset(_x_offset), y_offset(_y_offset), width(_width), height(_height) {}
+	Detail(uint32_t _x_offset, uint32_t _y_offset, uint32_t _width, uint32_t _height): x_offset(_x_offset), y_offset(_y_offset), width(_width), height(_height) {}
 
 	~Detail() 
     {
@@ -17,7 +17,7 @@ public:
         }
     }
 
-    bool init(int _height, int _width){
+    bool init(uint32_t _height, uint32_t _width){
         uint32_t displayHeight, displayWidth;
         NvEglRenderer::getDisplayResolution(displayWidth,displayHeight);
         if(height!=0 && width!=0){
@@ -34,8 +34,6 @@ public:
             LOG_ERROR << "Failed to create EGL renderer";
             return false;
         }
-        // #Mar10_Feedback - is it required ? can you remove it ?
-        renderer->setFPS(30);
 
         return true;
     }
@@ -46,8 +44,7 @@ public:
 	}
 
 	NvEglRenderer *renderer = nullptr;
-    // #Mar10_Feedback - change to uint32_t
-    int x_offset,y_offset,width,height;
+    uint32_t x_offset,y_offset,width,height;
 };
 
 EglRenderer::EglRenderer(EglRendererProps props) : Module(SINK, "EglRenderer", props)

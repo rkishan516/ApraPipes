@@ -5,24 +5,24 @@
 class EglRendererProps : public ModuleProps
 {
 public:
-	EglRendererProps(int _x_offset,int _y_offset, int _width, int _height) : ModuleProps()
+	EglRendererProps(uint32_t _x_offset,uint32_t _y_offset, uint32_t _width, uint32_t _height) : ModuleProps()
 	{
         x_offset = _x_offset;
         y_offset = _y_offset;
 		height = _height;
 		width = _width;
 	}
-	EglRendererProps(int _x_offset,int _y_offset) : ModuleProps()
+	EglRendererProps(uint32_t _x_offset,uint32_t _y_offset) : ModuleProps()
 	{
         x_offset = _x_offset;
         y_offset = _y_offset;
 		height = 0;
 		width = 0;
 	}
-    int x_offset;
-    int y_offset;
-	int height;
-	int width;
+    uint32_t x_offset;
+    uint32_t y_offset;
+	uint32_t height;
+	uint32_t width;
 };
 
 class EglRenderer : public Module
