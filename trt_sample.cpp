@@ -44,6 +44,7 @@ typedef struct
     unsigned int fps;
     bool enable_display;
     bool enable_log;
+    bool enable_mirror;
 } context_t;
 
 static void
@@ -56,6 +57,7 @@ print_usage(void)
            "\t-e\t\tSet TensorRT engine file\n"
            "\t-n\t\tSave the next n frames after Pressing s\n"
            "\t-f\t\tSet Output framerate in fps\n"
+           "\t-m\t\tEnable Mirroring\n"
            "\t-o\t\tOutput directory where frames to be stored\n"
            "\t-d\t\tdisable display\n"
            "\t-h\t\tPrint this usage\n\n"
@@ -72,6 +74,7 @@ set_defaults(context_t * ctx)
     ctx->save_n_frame = 1;
     ctx->enable_display = true;
     ctx->enable_log = false;
+    ctx->enable_mirror = false;
     ctx->fps = 30;
 }
 
@@ -86,7 +89,7 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
         exit(EXIT_SUCCESS);
     }
     ctx->save_n_frame = 0;
-    while ((c = getopt(argc, argv, "e:n:f:o:ldh")) != -1)
+    while ((c = getopt(argc, argv, "e:n:f:o:mldh")) != -1)
     {
         switch (c)
         {
@@ -105,6 +108,9 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
             case 'o':
                 ctx->outputDirectory = optarg;
                 break;
+            case 'm':
+                ctx->enable_mirror = true;
+                break;
             case 'l':
                 ctx->enable_log = true;
                 break;
@@ -121,71 +127,6 @@ parse_cmdline(context_t * ctx, int argc, char **argv)
     return true;
 }
 
-
-void newPipeLine(context_t *ctx){
-    cudaFree(0);
-    Logger::setLogLevel(boost::log::trivial::severity_level::info);
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
-	sourceProps.fps = 60;
-    sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
-	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
-
-    CCDMAProps ccdmaprops(ImageMetadata::RGBA);
-    ccdmaprops.qlen = 1;
-	auto ccdma = boost::shared_ptr<Module>(new CCDMA(ccdmaprops));
-	source->setNext(ccdma);
-    
-    auto stream = cudastream_sp(new ApraCudaStream);
-    CCDMACuProps ccdmacuprops(ImageMetadata::RGB,stream);
-    ccdmacuprops.qlen = 1;
-	auto ccdmacu = boost::shared_ptr<Module>(new CCDMACu(ccdmacuprops));
-	ccdma->setNext(ccdmacu);
-
-    TensorRTProps tensorrtprops(ctx->file,stream);
-    tensorrtprops.qlen = 1;
-    auto tensorrt = boost::shared_ptr<Module>(new TensorRT(tensorrtprops));
-    ccdmacu->setNext(tensorrt);
-
-    FramesMuxerProps muxerProps;
-    muxerProps.maxDelay = 200;
-    muxerProps.qlen = 1;
-    auto muxer = boost::shared_ptr<Module>(new FramesMuxer());
-    tensorrt->setNext(muxer);
-    ccdma->setNext(muxer);
-
-    CCCuDMAProps cccudmaprops(ImageMetadata::RGBA, stream);
-    cccudmaprops.qlen = 1;
-    auto cccudma = boost::shared_ptr<Module>(new CCCuDMA(cccudmaprops));
-	muxer->setNext(cccudma);
-
-    CuCtxSynchronizeProps cuCtxSyncProps;
-    cuCtxSyncProps.qlen = 1;
-    auto cuctx = boost::shared_ptr<Module>(new CuCtxSynchronize(cuCtxSyncProps));
-	cccudma->setNext(cuctx);
-
-    GLTransformProps gltransformProps;
-    gltransformProps.qlen = 1;
-    auto gltransform = boost::shared_ptr<Module>(new GLTransform(gltransformProps));
-	cuctx->setNext(gltransform);
-
-    EglRendererProps eglProps(0, 0,512, 1024);
-    eglProps.logHealth = true;
-	eglProps.logHealthFrequency = 100;
-    eglProps.qlen = 1;
-	auto sink = boost::shared_ptr<Module>(new EglRenderer(eglProps));
-	gltransform->setNext(sink);
-
-    PipeLine p("test");
-	p.appendModule(source);
-	p.init();
-
-	p.run_all_threaded();
-	boost::this_thread::sleep_for(boost::chrono::seconds(259200));
-	p.stop();
-	p.term();
-	p.wait_for_all();
-}
-
 void keyStrokePipeLine(context_t *ctx){
     cudaFree(0);
 
@@ -195,7 +136,7 @@ void keyStrokePipeLine(context_t *ctx){
     }else{
         Logger::setLogLevel(boost::log::trivial::severity_level::error);
     }
-    NvV4L2CameraProps sourceProps(1920, 1080, 10);
+    NvV4L2CameraProps sourceProps(1920, 1080, 10, ctx->enable_mirror);
 	sourceProps.fps = 60;
     sourceProps.quePushStrategyType = QuePushStrategy::NON_BLOCKING_ANY;
 	auto source = boost::shared_ptr<Module>(new NvV4L2Camera(sourceProps));
