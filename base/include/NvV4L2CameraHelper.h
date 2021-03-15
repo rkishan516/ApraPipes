@@ -18,7 +18,7 @@ public:
     ~NvV4L2CameraHelper();
     static std::shared_ptr<NvV4L2CameraHelper> create(SendFrame sendFrame, std::function<frame_sp()> _makeFrame);
 
-    bool start(uint32_t width, uint32_t height, uint32_t maxConcurrentFrames);
+    bool start(uint32_t width, uint32_t height, uint32_t maxConcurrentFrames, bool isMirror);
     bool stop();
     void operator()();
     bool queueBufferToCamera();
@@ -40,7 +40,7 @@ private:
     SendFrame mSendFrame;
     std::map<int, frame_sp> mBufferFD;
 
-    bool cameraInitialize();
+    bool cameraInitialize(bool isMirror);
     bool prepareBuffers();    
     bool startStream();
     bool requestCameraBuff();

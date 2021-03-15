@@ -41,7 +41,7 @@ BOOST_AUTO_TEST_CASE(basic, *boost::unit_test::disabled())
         }
     );
 
-    BOOST_TEST(helper->start(width, height, 10));
+    BOOST_TEST(helper->start(width, height, 10, false));
 
     boost::this_thread::sleep_for(boost::chrono::seconds(5000));
 
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(cache, *boost::unit_test::disabled())
         [&]() -> frame_sp {return framefactory->create(framemetadata->getDataSize(),framefactory);}
         );
 
-        BOOST_TEST(helper->start(width, height, 10));
+        BOOST_TEST(helper->start(width, height, 10,false));
 
         boost::this_thread::sleep_for(boost::chrono::seconds(5));
 

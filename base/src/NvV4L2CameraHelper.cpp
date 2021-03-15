@@ -24,7 +24,7 @@ NvV4L2CameraHelper::~NvV4L2CameraHelper()
     }
 }
 
-bool NvV4L2CameraHelper::cameraInitialize()
+bool NvV4L2CameraHelper::cameraInitialize(bool isMirror)
 {
     struct v4l2_format fmt;
 
@@ -33,6 +33,16 @@ bool NvV4L2CameraHelper::cameraInitialize()
     if (mCamFD == -1)
     {
         LOG_ERROR << "Failed to open camera /dev/video0";
+        return false;
+    }
+
+    struct v4l2_control inp;
+    memset(&inp, 0, sizeof(inp));
+    inp.id = V4L2_CID_HFLIP;
+    inp.value = !isMirror;
+
+    if(ioctl(mCamFD, VIDIOC_S_CTRL, &inp) < 0){
+        LOG_ERROR << "Flip failed";
         return false;
     }
 
@@ -207,13 +217,13 @@ bool NvV4L2CameraHelper::requestCameraBuff()
     return true;
 }
 
-bool NvV4L2CameraHelper::start(uint32_t width, uint32_t height, uint32_t _maxConcurrentFrames)
+bool NvV4L2CameraHelper::start(uint32_t width, uint32_t height, uint32_t _maxConcurrentFrames, bool isMirror)
 {
     mCamHeight = height;
     mCamWidth = width;
     mMaxConcurrentFrames = _maxConcurrentFrames;
     bool status = false;
-    status = cameraInitialize();
+    status = cameraInitialize(isMirror);
     if (status == false)
     {
         LOG_ERROR << "Camera Initialization Failed";

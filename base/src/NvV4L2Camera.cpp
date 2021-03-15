@@ -36,7 +36,7 @@ bool NvV4L2Camera::init()
 		return false;
 	}
 	
-	return mHelper->start(props.width, props.height, props.maxConcurrentFrames);
+	return mHelper->start(props.width, props.height, props.maxConcurrentFrames, props.isMirror);
 }
 
 bool NvV4L2Camera::term()
