@@ -12,8 +12,8 @@ void Logger::initLogger(LoggerProps props)
 	instance.reset(new Logger(props));
 }
 
-Logger* Logger::getLogger()
-{		
+Logger *Logger::getLogger()
+{
 	if (instance.get())
 	{
 		return instance.get();
@@ -28,12 +28,12 @@ Logger::Logger(LoggerProps props)
 	mListener = nullptr;
 	mProps = props;
 	initBoostLogger(props);
-	
+
 	logDisabled = !mProps.enableConsoleLog && !mProps.enableFileLog;
 	// start thread
 	if (!logDisabled)
 	{
-		Logger& logger = *this;
+		Logger &logger = *this;
 		myThread = boost::thread(std::ref(logger));
 	}
 }
@@ -63,24 +63,22 @@ void Logger::initBoostLogger(LoggerProps props)
 	}
 	props.fileLogPath = props.fileLogPath.substr(0, index) + "_%5N" + props.fileLogPath.substr(index);
 
-	mFileSink = boost::log::add_file_log
-	(
-		boost::log::keywords::file_name = props.fileLogPath,                                        /*< file name pattern >*/
-		boost::log::keywords::rotation_size = 10*1024*1024,                                   /*< rotate files every 10 MiB... >*/
-		boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0), /*< ...or at midnight >*/		
+	mFileSink = boost::log::add_file_log(
+		boost::log::keywords::file_name = props.fileLogPath,												  /*< file name pattern >*/
+		boost::log::keywords::rotation_size = 10 * 1024 * 1024,												  /*< rotate files every 10 MiB... >*/
+		boost::log::keywords::time_based_rotation = boost::log::sinks::file::rotation_at_time_point(0, 0, 0), /*< ...or at midnight >*/
 		boost::log::keywords::auto_flush = true,
 		boost::log::keywords::min_free_space = 25 * 1024 * 1024, /* 25 MB */
 		boost::log::keywords::max_files = 25,
-		boost::log::keywords::target = boost::filesystem::path(props.fileLogPath).parent_path().string()
-	);
-	
+		boost::log::keywords::target = boost::filesystem::path(props.fileLogPath).parent_path().string());
+
 	boost::log::add_common_attributes();
 }
 
 Logger::~Logger()
 {
 	mRunning = false;
-	
+
 	if (!logDisabled)
 	{
 		mQue.setWake();
@@ -100,13 +98,13 @@ Logger::~Logger()
 	mQue.clear();
 }
 
-void Logger::setListener(void(*cb)(std::string&))
+void Logger::setListener(void (*cb)(std::string &))
 {
 	auto logger = Logger::getLogger();
 	logger->_setListener(cb);
 }
 
-void Logger::_setListener(void(*cb)(std::string&))
+void Logger::_setListener(void (*cb)(std::string &))
 {
 	mListener = cb;
 }
@@ -118,7 +116,7 @@ void Logger::setLogLevel(boost::log::trivial::severity_level severity)
 }
 
 void Logger::_setLogLevel(boost::log::trivial::severity_level severity)
-{	
+{
 	mProps.logLevel = severity;
 }
 
@@ -136,7 +134,7 @@ void Logger::setFileLog(bool enableLog)
 	}
 }
 
-void Logger::operator()() 
+void Logger::operator()()
 {
 	run();
 }
@@ -152,23 +150,23 @@ bool Logger::run()
 			process(message);
 		}
 	}
-		
+
 	return true;
 }
 
-bool Logger::process(std::string& message)
-{		
-	BOOST_LOG_SEV(lg, boost::log::trivial::info) << message;	
+bool Logger::process(std::string &message)
+{
+	BOOST_LOG_SEV(lg, boost::log::trivial::info) << message;
 
 	if (mListener)
 	{
 		mListener(message);
 	}
-	
+
 	return true;
 }
 
-bool Logger::push(boost::log::trivial::severity_level level, std::ostringstream& stream)
+bool Logger::push(boost::log::trivial::severity_level level, std::ostringstream &stream)
 {
 	if (logDisabled)
 	{
@@ -184,13 +182,13 @@ bool Logger::push(boost::log::trivial::severity_level level, std::ostringstream&
 	{
 		return false;
 	}
-		
-	mQue.push(stream.str());	
+
+	mQue.push(stream.str());
 
 	return false;
 }
 
-std::ostringstream & Logger::pre(std::ostringstream& stream, boost::log::trivial::severity_level lvl)
+std::ostringstream &Logger::pre(std::ostringstream &stream, boost::log::trivial::severity_level lvl)
 {
 	if (lvl >= mProps.logLevel)
 	{
@@ -200,12 +198,12 @@ std::ostringstream & Logger::pre(std::ostringstream& stream, boost::log::trivial
 	return stream;
 }
 
-std::ostringstream & Logger::aipexceptionPre(std::ostringstream& stream, boost::log::trivial::severity_level lvl,int type)
+std::ostringstream &Logger::aipexceptionPre(std::ostringstream &stream, boost::log::trivial::severity_level lvl, int type)
 {
 	if (lvl >= mProps.logLevel)
 	{
 		//add TS and Sev into the log
-		stream << boost::posix_time::microsec_clock::universal_time() <<" [AIPException<" << type << ">] ";
+		stream << boost::posix_time::microsec_clock::universal_time() << " [AIPException<" << type << ">] ";
 	}
 	return stream;
 }
